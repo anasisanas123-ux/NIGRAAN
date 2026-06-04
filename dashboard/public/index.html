@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus Surveillance System</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1117; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #161b27; border-bottom: 0.5px solid #2d3748; }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .status-bar { display: flex; align-items: center; gap: 16px; font-size: 12px; color: #718096; }
+  .status-live { color: #10b981; font-weight: 500; }
+  .main { padding: 16px 20px; }
+  .cam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .cam-card { background: #1a1f2e; border: 0.5px solid #2d3748; border-radius: 10px; overflow: hidden; }
+  .cam-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #161b27; border-bottom: 0.5px solid #2d3748; }
+  .cam-title { font-size: 12px; font-weight: 500; color: #a0aec0; }
+  .cam-badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: #10b981; color: #fff; font-weight: 500; }
+  .cam-badge.offline { background: #e53e3e; }
+  .cam-feed {
+    background: #0d1117;
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%;
+    overflow: hidden;
+  }
+  .cam-feed iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #0d1117;
+  }
+  .cam-info { padding: 6px 14px; display: flex; justify-content: space-between; font-size: 11px; color: #718096; }
+  .fps { color: #63b3ed; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat-card { background: #1a1f2e; border: 0.5px solid #2d3748; border-radius: 8px; padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: #718096; margin-bottom: 6px; }
+  .stat-val { font-size: 24px; font-weight: 500; }
+  .green { color: #10b981; }
+  .red { color: #fc8181; }
+  .blue { color: #63b3ed; }
+  .amber { color: #f6ad55; }
+  .bottom-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+  .panel { background: #1a1f2e; border: 0.5px solid #2d3748; border-radius: 10px; overflow: hidden; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 0.5px solid #2d3748; font-size: 13px; font-weight: 500; color: #a0aec0; }
+  .panel-body { padding: 8px 14px; max-height: 280px; overflow-y: auto; }
+  .panel-body::-webkit-scrollbar { width: 3px; }
+  .panel-body::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 2px; }
+  .log-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid #1e2535; font-size: 12px; }
+  .log-item:last-child { border-bottom: none; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot.known { background: #10b981; }
+  .dot.unknown { background: #fc8181; }
+  .log-name { flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log-cam { font-size: 10px; color: #63b3ed; background: #1a2744; padding: 1px 6px; border-radius: 3px; flex-shrink: 0; }
+  .log-conf { font-size: 11px; flex-shrink: 0; }
+  .log-conf.high { color: #10b981; }
+  .log-conf.low { color: #fc8181; }
+  .log-time { font-size: 10px; color: #4a5568; flex-shrink: 0; }
+  .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid #1e2535; font-size: 12px; }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .alert-icon.danger { background: #3d1515; color: #fc8181; }
+  .alert-icon.warn { background: #3d2f0f; color: #f6ad55; }
+  .alert-icon.info { background: #0f2744; color: #63b3ed; }
+  .alert-body { flex: 1; }
+  .alert-title { font-weight: 500; margin-bottom: 2px; }
+  .alert-sub { color: #718096; font-size: 11px; }
+  .alert-time { font-size: 10px; color: #4a5568; flex-shrink: 0; margin-top: 2px; }
+  .clear-btn { font-size: 11px; color: #63b3ed; background: none; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Campus Surveillance System
+  </div>
+  <div class="status-bar">
+    <span class="status-live">&#9679; Live</span>
+    <span id="clock">--:--:--</span>
+    <span id="cam-count">Connecting...</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="cam-grid">
+    <div class="cam-card">
+      <div class="cam-header">
+        <span class="cam-title">&#128247; CAM_A &mdash; Entrance</span>
+        <span class="cam-badge" id="badge-a">Live</span>
+      </div>
+      <div class="cam-feed">
+        <iframe src="http://localhost:5001/video_feed/cam_a"
+                id="iframe-a"
+                scrolling="no"
+                allowfullscreen>
+        </iframe>
+      </div>
+      <div class="cam-info">
+        <span>192.168.100.7</span>
+        <span class="fps" id="fps-a">FPS: &mdash;</span>
+        <span id="det-a">Detections: &mdash;</span>
+      </div>
+    </div>
+
+    <div class="cam-card">
+      <div class="cam-header">
+        <span class="cam-title">&#128247; CAM_B &mdash; Corridor</span>
+        <span class="cam-badge" id="badge-b">Live</span>
+      </div>
+      <div class="cam-feed">
+        <iframe src="http://localhost:5001/video_feed/cam_b"
+                id="iframe-b"
+                scrolling="no"
+                allowfullscreen>
+        </iframe>
+      </div>
+      <div class="cam-info">
+        <span>192.168.100.50</span>
+        <span class="fps" id="fps-b">FPS: &mdash;</span>
+        <span id="det-b">Detections: &mdash;</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total today</div>
+      <div class="stat-val blue" id="stat-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Known</div>
+      <div class="stat-val green" id="stat-known">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unknown</div>
+      <div class="stat-val red" id="stat-unknown">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cross-camera</div>
+      <div class="stat-val amber" id="stat-cross">0</div>
+    </div>
+  </div>
+
+  <div class="bottom-grid">
+    <div class="panel">
+      <div class="panel-header">
+        Detection log
+        <button class="clear-btn" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="panel-body" id="log-body">
+        <div id="log-placeholder" style="color:#4a5568;font-size:12px;">
+          Waiting for detections...
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        Alerts
+        <span style="font-size:11px;color:#fc8181;font-weight:500;" id="alert-count">
+          0 active
+        </span>
+      </div>
+      <div class="panel-body" id="alert-body">
+        <div id="alert-placeholder" style="color:#4a5568;font-size:12px;padding:8px 0;">
+          No alerts yet.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function tick(){
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  let total=0, known=0, unknown=0, cross=0, alertCount=0;
+
+  function updateStats(){
+    document.getElementById('stat-total').textContent   = total;
+    document.getElementById('stat-known').textContent   = known;
+    document.getElementById('stat-unknown').textContent = unknown;
+    document.getElementById('stat-cross').textContent   = cross;
+    document.getElementById('alert-count').textContent  = alertCount+' active';
+  }
+
+  function addLog(d){
+    const ph = document.getElementById('log-placeholder');
+    if(ph) ph.remove();
+
+    const isKnown = d.is_known;
+    const t       = new Date(d.timestamp || Date.now());
+    const time    = pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds());
+    const conf    = isKnown ? Math.round((d.confidence||0)*100)+'%' : '&mdash;';
+    const name    = d.student_name || 'Unknown';
+    const cam     = d.camera_id || '&mdash;';
+
+    const el = document.createElement('div');
+    el.className = 'log-item';
+    el.innerHTML = `
+      <div class="dot ${isKnown?'known':'unknown'}"></div>
+      <span class="log-name">${name}</span>
+      <span class="log-cam">${cam}</span>
+      <span class="log-conf ${isKnown?'high':'low'}">${conf}</span>
+      <span class="log-time">${time}</span>`;
+
+    const body = document.getElementById('log-body');
+    body.insertBefore(el, body.firstChild);
+    if(body.children.length > 30) body.removeChild(body.lastChild);
+
+    total++;
+    if(isKnown) known++; else unknown++;
+    updateStats();
+  }
+
+  function clearLog(){
+    document.getElementById('log-body').innerHTML =
+      '<div id="log-placeholder" style="color:#4a5568;font-size:12px;">Waiting for detections...</div>';
+    total=0; known=0; unknown=0;
+    updateStats();
+  }
+
+  function addAlert(type, title, sub){
+    const ph = document.getElementById('alert-placeholder');
+    if(ph) ph.remove();
+
+    alertCount++;
+    const t    = new Date();
+    const time = pad(t.getHours())+':'+pad(t.getMinutes());
+    const icons = { danger:'&#9888;', warn:'&#128065;', info:'&#8644;' };
+
+    const el = document.createElement('div');
+    el.className = 'alert-item';
+    el.innerHTML = `
+      <div class="alert-icon ${type}">${icons[type]||'!'}</div>
+      <div class="alert-body">
+        <div class="alert-title">${title}</div>
+        <div class="alert-sub">${sub}</div>
+      </div>
+      <div class="alert-time">${time}</div>`;
+
+    const body = document.getElementById('alert-body');
+    body.insertBefore(el, body.firstChild);
+    if(body.children.length > 15) body.removeChild(body.lastChild);
+    updateStats();
+  }
+
+  try {
+    const socket = io();
+
+    socket.on('connect', () => {
+      document.getElementById('cam-count').textContent = 'Connected to server';
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('cam-count').textContent = 'Disconnected';
+    });
+
+    socket.on('new_detection', (d) => {
+      addLog(d);
+      if(!d.is_known){
+        addAlert('danger', 'Unknown person detected',
+          `${d.student_name||'Unknown'} on ${d.camera_id} — ID: ${d.tracker_id||'—'}`);
+      }
+    });
+
+    socket.on('cross_camera', (d) => {
+      cross++;
+      updateStats();
+      addAlert('info', 'Cross-camera match',
+        `${d.global_id} tracked on ${(d.cameras||[]).join(' → ')}`);
+    });
+
+  } catch(e){
+    console.log('Socket error:', e);
+  }
+
+  fetch('/api/detections/stats')
+    .then(r => r.json())
+    .then(d => {
+      if(d.success && d.data){
+        total   = d.data.totalToday   || 0;
+        known   = d.data.knownToday   || 0;
+        unknown = d.data.unknownToday || 0;
+        updateStats();
+      }
+    }).catch(()=>{});
+
+  fetch('/api/detections?limit=15')
+    .then(r => r.json())
+    .then(d => {
+      if(d.success && d.data && d.data.length){
+        d.data.slice().reverse().forEach(addLog);
+      }
+    }).catch(()=>{});
+</script>
+</body>
+</html>

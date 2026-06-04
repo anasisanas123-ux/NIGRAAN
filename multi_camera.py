@@ -16,7 +16,6 @@ from python_engine.annotator       import Annotator
 from python_engine.reid_manager    import ReIDManager
 from python_engine.engine_api      import update_feed, start_engine
 
-# maximize GPU
 if torch.cuda.is_available():
     torch.backends.cudnn.benchmark     = True
     torch.backends.cudnn.deterministic = False
@@ -37,7 +36,6 @@ print(f"Students: {len(recognizer.known_embeddings)}")
 print(f"Cameras : {list(config.CAMERA_SOURCES.keys())}")
 print("All models loaded.\n")
 
-# start video feed server in background
 threading.Thread(target=start_engine, daemon=True).start()
 print(f"Video feed server started on port {config.ENGINE_PORT}")
 
@@ -99,12 +97,14 @@ def camera_worker(cam_id, source, result_queue):
 
     print(f"{cam_id} connected.")
 
-    frame_count = 0
-    last_log    = time.time()
-    last_result = []
-    fps_time    = time.time()
-    fps         = 0
-    tracked     = []
+    frame_count      = 0
+    last_result      = []
+    fps_time         = time.time()
+    fps              = 0
+    tracked          = []
+    logged_ids       = set()
+    tracker_to_uid   = {}
+    pending_log_time = {}
 
     while True:
         ret, frame = stream.read()
@@ -117,7 +117,6 @@ def camera_worker(cam_id, source, result_queue):
         fps      = 0.92 * fps + 0.08 / max(now - fps_time, 0.001)
         fps_time = now
 
-        # skip frames — just display last result
         if frame_count % config.FRAME_SKIP != 0:
             try:
                 result_queue.put_nowait((cam_id, frame.copy(),
@@ -132,71 +131,115 @@ def camera_worker(cam_id, source, result_queue):
 
         results = []
         for det in detections:
-            rec = recognizer.recognize(det['face_crop'])
-            rec['bbox']       = det['bbox']
-            rec['confidence'] = det['confidence']
-            rec['tracker_id'] = None
-            rec['global_id']  = None
-            rec['cameras']    = [cam_id]
 
             # match tracker id
+            temp_tracker = None
             dx = (det['bbox'][0] + det['bbox'][2]) // 2
             dy = (det['bbox'][1] + det['bbox'][3]) // 2
             for t in tracked:
                 tx1, ty1, tx2, ty2 = t['bbox']
                 if tx1 <= dx <= tx2 and ty1 <= dy <= ty2:
-                    rec['tracker_id'] = t['tracker_id']
+                    temp_tracker = t['tracker_id']
                     break
 
-            # cross-camera reid — only every 5th detection frame
-            if not rec['is_known']:
-                if frame_count % (config.FRAME_SKIP * 5) == 0:
-                    emb = recognizer.get_embedding(det['face_crop'])
-                    if emb is not None:
-                        global_id, score = reid.find_or_create(
-                            emb, cam_id
-                        )
-                        rec['global_id'] = global_id
-                        rec['cameras']   = reid.get_cameras_for(global_id)
-                        rec['name']      = global_id
+            # recognize with voting
+            rec = recognizer.recognize(
+                det['face_crop'],
+                tracker_id=f"{cam_id}_{temp_tracker}"
+            )
+            rec['bbox']       = det['bbox']
+            rec['confidence'] = det['confidence']
+            rec['tracker_id'] = temp_tracker
+            rec['global_id']  = None
+            rec['cameras']    = [cam_id]
 
-                        # notify Node.js about cross-camera match
-                        if len(rec['cameras']) > 1:
+            if rec['is_known']:
+                # ── known person ──────────────────────────
+                stable_uid = rec['student_id']
+                rec['global_id'] = stable_uid
+
+                if stable_uid not in logged_ids:
+                    if stable_uid not in pending_log_time:
+                        # first time seen — start timer
+                        pending_log_time[stable_uid] = now
+                    elif now - pending_log_time[stable_uid] >= 1.0:
+                        # stable for 1 second — log once
+                        logged_ids.add(stable_uid)
+                        pending_log_time.pop(stable_uid, None)
+                        threading.Thread(
+                            target=post_detection,
+                            args=({
+                                'camera_id':    cam_id,
+                                'student_id':   rec.get('student_id'),
+                                'student_name': rec.get('name', 'Unknown'),
+                                'is_known':     True,
+                                'confidence':   round(rec.get('confidence', 0), 4),
+                                'tracker_id':   temp_tracker
+                            },),
+                            daemon=True
+                        ).start()
+
+            else:
+                # ── unknown person ────────────────────────
+                emb = recognizer.get_embedding(det['face_crop'])
+
+                if emb is not None:
+                    global_id, score = reid.find_or_create(emb, cam_id)
+                    rec['global_id'] = global_id
+                    rec['cameras']   = reid.get_cameras_for(global_id)
+                    rec['name']      = global_id
+
+                    if temp_tracker:
+                        tracker_to_uid[f"{cam_id}_{temp_tracker}"] = global_id
+
+                    if global_id not in logged_ids:
+                        if global_id not in pending_log_time:
+                            # first time seen — start timer
+                            pending_log_time[global_id] = now
+                        elif now - pending_log_time[global_id] >= 2.0:
+                            # stable for 2 seconds — log once
+                            logged_ids.add(global_id)
+                            pending_log_time.pop(global_id, None)
                             threading.Thread(
-                                target=lambda: requests.post(
+                                target=post_detection,
+                                args=({
+                                    'camera_id':    cam_id,
+                                    'student_id':   None,
+                                    'student_name': global_id,
+                                    'is_known':     False,
+                                    'confidence':   0.0,
+                                    'tracker_id':   global_id
+                                },),
+                                daemon=True
+                            ).start()
+
+                    # cross-camera alert
+                    if len(rec['cameras']) > 1:
+                        threading.Thread(
+                            target=lambda gid=global_id, cams=rec['cameras']:
+                                requests.post(
                                     f"{config.NODE_API_URL}/api/cross_camera",
                                     json={
-                                        'global_id': global_id,
-                                        'cameras':   rec['cameras']
+                                        'global_id': gid,
+                                        'cameras':   cams
                                     },
                                     timeout=0.5
                                 ),
-                                daemon=True
-                            ).start()
+                            daemon=True
+                        ).start()
+
                 else:
-                    rec['name'] = 'Unknown'
+                    cached = tracker_to_uid.get(f"{cam_id}_{temp_tracker}")
+                    if cached:
+                        rec['global_id'] = cached
+                        rec['name']      = cached
+                        rec['cameras']   = reid.get_cameras_for(cached)
+                    else:
+                        rec['name'] = 'Unknown'
 
             results.append(rec)
 
         last_result = results
-
-        # log to Node.js
-        if results and now - last_log > 3:
-            for r in results:
-                threading.Thread(
-                    target=post_detection,
-                    args=({
-                        'camera_id':    cam_id,
-                        'student_id':   r.get('student_id'),
-                        'student_name': r.get('name', 'Unknown'),
-                        'is_known':     r.get('is_known', False),
-                        'confidence':   round(r.get('confidence', 0), 4),
-                        'tracker_id':   r.get('global_id') or
-                                        r.get('tracker_id')
-                    },),
-                    daemon=True
-                ).start()
-            last_log = now
 
         try:
             result_queue.put_nowait((cam_id, frame.copy(), results, fps))
@@ -221,19 +264,16 @@ def run_display(result_queue):
         for cam_id, (frame, detections, fps) in latest.items():
             display = annotator.draw(frame.copy(), detections)
 
-            # camera label
             cv2.putText(display, f"{cam_id.upper()}",
                         (display.shape[1] - 100, 30),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.8, (255, 255, 0), 2)
 
-            # FPS
             cv2.putText(display, f"FPS: {fps:.0f}",
                         (10, 60),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.7, (0, 255, 255), 2)
 
-            # cross camera alert
             for det in detections:
                 if not det.get('is_known') and \
                    len(det.get('cameras', [])) > 1:
@@ -245,7 +285,6 @@ def run_display(result_queue):
                         0.7, (0, 0, 255), 2
                     )
 
-            # resize to fixed window
             display  = cv2.resize(display, win_size)
             win_name = f"Campus Surveillance — {cam_id}"
 
@@ -255,8 +294,6 @@ def run_display(result_queue):
                 windows_created.add(cam_id)
 
             cv2.imshow(win_name, display)
-
-            # push annotated frame to web dashboard
             update_feed(cam_id, display)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

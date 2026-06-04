@@ -13,6 +13,8 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .status-bar { display: flex; align-items: center; gap: 16px; font-size: 12px; color: #718096; }
   .status-live { color: #10b981; font-weight: 500; }
+  .reset-btn { font-size: 11px; color: #fc8181; background: none; border: 0.5px solid #fc8181; border-radius: 4px; padding: 3px 12px; cursor: pointer; }
+  .reset-btn:hover { background: #3d1515; }
   .main { padding: 16px 20px; }
   .cam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
   .cam-card { background: #1a1f2e; border: 0.5px solid #2d3748; border-radius: 10px; overflow: hidden; }
@@ -20,22 +22,8 @@
   .cam-title { font-size: 12px; font-weight: 500; color: #a0aec0; }
   .cam-badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: #10b981; color: #fff; font-weight: 500; }
   .cam-badge.offline { background: #e53e3e; }
-  .cam-feed {
-    background: #0d1117;
-    position: relative;
-    width: 100%;
-    padding-top: 56.25%;
-    overflow: hidden;
-  }
-  .cam-feed iframe {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-    display: block;
-    background: #0d1117;
-  }
+  .cam-feed { background: #0d1117; position: relative; width: 100%; padding-top: 56.25%; overflow: hidden; }
+  .cam-feed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; display: block; background: #0d1117; }
   .cam-info { padding: 6px 14px; display: flex; justify-content: space-between; font-size: 11px; color: #718096; }
   .fps { color: #63b3ed; }
   .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
@@ -87,6 +75,7 @@
     <span class="status-live">&#9679; Live</span>
     <span id="clock">--:--:--</span>
     <span id="cam-count">Connecting...</span>
+    <button class="reset-btn" onclick="resetAllLogs()">&#128465; Reset all logs</button>
   </div>
 </div>
 
@@ -262,6 +251,22 @@
     body.insertBefore(el, body.firstChild);
     if(body.children.length > 15) body.removeChild(body.lastChild);
     updateStats();
+  }
+
+  function resetAllLogs(){
+    if(!confirm('Clear all detection logs and alerts from database?')) return;
+    fetch('/api/detections/reset', { method: 'DELETE' })
+      .then(r => r.json())
+      .then(d => {
+        if(d.success){
+          clearLog();
+          document.getElementById('alert-body').innerHTML =
+            '<div id="alert-placeholder" style="color:#4a5568;font-size:12px;padding:8px 0;">No alerts yet.</div>';
+          alertCount=0; cross=0;
+          updateStats();
+          console.log('All logs cleared');
+        }
+      }).catch(err => console.log('Reset error:', err));
   }
 
   try {

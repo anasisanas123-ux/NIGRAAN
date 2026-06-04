@@ -8,6 +8,7 @@ import cv2
 from PIL import Image
 from facenet_pytorch import InceptionResnetV1
 import torchvision.transforms as T
+from collections import deque, Counter
 import config
 
 class FaceRecognizer:
@@ -29,6 +30,11 @@ class FaceRecognizer:
         self.known_names      = {}
         self.emb_matrix       = None
         self.emb_ids          = []
+
+        # voting buffer per tracker_id
+        # keeps last N predictions and returns majority
+        self.vote_buffer = {}
+        self.vote_size   = 7
 
         self.load_database()
         self._build_embedding_matrix()
@@ -77,6 +83,15 @@ class FaceRecognizer:
                         sid, name = line.split(',', 1)
                         self.known_names[sid.strip()] = name.strip()
 
+    def _enhance(self, img_np):
+        try:
+            clahe    = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(4, 4))
+            channels = cv2.split(img_np)
+            enhanced = [clahe.apply(ch) for ch in channels]
+            return cv2.merge(enhanced)
+        except Exception:
+            return img_np
+
     def get_embedding(self, face_crop_rgb):
         try:
             if face_crop_rgb is None or face_crop_rgb.size == 0:
@@ -96,7 +111,7 @@ class FaceRecognizer:
             norm = np.linalg.norm(emb)
             return emb / norm if norm > 0 else emb
 
-        except Exception as e:
+        except Exception:
             return None
 
     def cosine_similarity_batch(self, query_emb):
@@ -106,7 +121,11 @@ class FaceRecognizer:
         best_idx = int(np.argmax(scores))
         return self.emb_ids[best_idx], float(scores[best_idx])
 
-    def recognize(self, face_crop_rgb):
+    def recognize(self, face_crop_rgb, tracker_id=None):
+        """
+        Recognize with majority voting for stability.
+        tracker_id: use to maintain per-person vote buffer
+        """
         unknown = {
             'is_known': False, 'student_id': None,
             'name': 'Unknown', 'confidence': 0.0
@@ -121,14 +140,45 @@ class FaceRecognizer:
 
         best_id, best_score = self.cosine_similarity_batch(query_emb)
 
+        # raw prediction
         if best_score >= config.RECOGNITION_THRESHOLD:
-            name = self.known_names.get(best_id, best_id)
-            print(f"Recognized: {name} | Score: {best_score:.4f}")
-            return {
-                'is_known':   True,
-                'student_id': best_id,
-                'name':       name,
-                'confidence': best_score
-            }
+            raw_pred = best_id
+        else:
+            raw_pred = 'unknown'
 
-        return unknown
+        # ── majority voting ────────────────────────────
+        key = tracker_id if tracker_id else 'default'
+        if key not in self.vote_buffer:
+            self.vote_buffer[key] = deque(maxlen=self.vote_size)
+
+        self.vote_buffer[key].append(raw_pred)
+
+        # get majority vote
+        votes  = Counter(self.vote_buffer[key])
+        winner, win_count = votes.most_common(1)[0]
+
+        # only accept if majority (more than half) agree
+        if winner == 'unknown' or win_count < (self.vote_size // 2 + 1):
+            return unknown
+
+        # get average confidence for winner
+        winner_scores = []
+        temp_emb      = query_emb
+        for sid, emb in self.known_embeddings.items():
+            if sid == winner:
+                s = float(np.dot(temp_emb, emb) /
+                         (np.linalg.norm(temp_emb) *
+                          np.linalg.norm(emb) + 1e-10))
+                winner_scores.append(s)
+
+        avg_conf = float(np.mean(winner_scores)) if winner_scores else best_score
+        name     = self.known_names.get(winner, winner)
+
+        print(f"Recognized: {name} | Score: {avg_conf:.4f} | Votes: {win_count}/{self.vote_size}")
+
+        return {
+            'is_known':   True,
+            'student_id': winner,
+            'name':       name,
+            'confidence': avg_conf
+        }

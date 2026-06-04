@@ -16,20 +16,21 @@ CAMERA_SOURCES = {
 }
 
 # ── Face recognition settings ────────────────────────────
-RECOGNITION_THRESHOLD     = 0.45
-FACE_DETECTION_CONFIDENCE = 0.75
+RECOGNITION_THRESHOLD     = 0.60
+REID_THRESHOLD            = 0.25
+FACE_DETECTION_CONFIDENCE = 0.92
 EMBEDDING_SIZE            = 512
-MIN_FACE_SIZE             = 25
+MIN_FACE_SIZE             = 60
 
 # ── Tracker settings ─────────────────────────────────────
-MAX_AGE      = 80
-N_INIT       = 1
+MAX_AGE      = 120
+N_INIT       = 2
 MAX_IOU_DIST = 0.7
 
 # ── Processing settings ──────────────────────────────────
-FRAME_SKIP   = 4
-FRAME_WIDTH  = 320
-FRAME_HEIGHT = 240
+FRAME_SKIP   = 2
+FRAME_WIDTH  = 640
+FRAME_HEIGHT = 480
 
 # ── Node.js API ──────────────────────────────────────────
 NODE_API_URL       = "http://localhost:3000"

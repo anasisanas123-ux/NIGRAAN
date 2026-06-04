@@ -15,7 +15,7 @@ class FaceDetector:
             keep_all=True,
             device=self.device,
             min_face_size=config.MIN_FACE_SIZE,
-            thresholds=[0.5, 0.6, config.FACE_DETECTION_CONFIDENCE],
+            thresholds=[0.6, 0.7, config.FACE_DETECTION_CONFIDENCE],
             post_process=False,
             select_largest=False
         )
@@ -40,12 +40,41 @@ class FaceDetector:
                 x2 = max(0, min(w,   int(box[2])))
                 y2 = max(0, min(h,   int(box[3])))
 
-                if (x2-x1) < config.MIN_FACE_SIZE or \
-                   (y2-y1) < config.MIN_FACE_SIZE:
+                w_box = x2 - x1
+                h_box = y2 - y1
+
+                # size check
+                if w_box < config.MIN_FACE_SIZE or \
+                   h_box < config.MIN_FACE_SIZE:
                     continue
 
+                # aspect ratio check — real faces are roughly square
+                aspect = w_box / max(h_box, 1)
+                if aspect < 0.4 or aspect > 2.2:
+                    continue
+
+                # position check — ignore bottom 20% of frame (floor)
+                if y1 > h * 0.80:
+                    continue
+
+                # ignore top 5% of frame (ceiling artifacts)
+                if y2 < h * 0.05:
+                    continue
+
+                # brightness check — floor tiles often very bright or dark
                 face_crop = frame_rgb[y1:y2, x1:x2]
                 if face_crop.size == 0:
+                    continue
+
+                mean_brightness = np.mean(face_crop)
+                if mean_brightness < 20 or mean_brightness > 240:
+                    continue
+
+                # variance check — real faces have texture variance
+                # floor tiles are often uniform
+                gray_crop = cv2.cvtColor(face_crop, cv2.COLOR_RGB2GRAY)
+                variance  = np.var(gray_crop)
+                if variance < 100:
                     continue
 
                 results.append({

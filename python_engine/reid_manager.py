@@ -5,48 +5,30 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import threading
 import time
-import requests
 import config
 
 class ReIDManager:
-    """
-    Manages cross-camera re-identification of unknown persons.
-    When an unknown person is seen on Camera A, their embedding
-    is stored. When they appear on Camera B, their embedding is
-    compared and if matched, the same global ID is assigned.
-    """
-
     def __init__(self):
         self.lock            = threading.Lock()
         self.unknown_gallery = {}
-        # {global_id: {
-        #     'embedding': np.array,
-        #     'first_seen': timestamp,
-        #     'last_seen':  timestamp,
-        #     'cameras':    set,
-        #     'snapshots':  []
-        # }}
         self.next_global_id  = 1
-        self.threshold       = config.RECOGNITION_THRESHOLD
-        print("ReIDManager ready")
+        self.threshold       = getattr(config, 'REID_THRESHOLD', 0.35)
+        print(f"ReIDManager ready — threshold: {self.threshold}")
 
     def _cosine_similarity(self, a, b):
         return float(np.dot(a, b) /
                      (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
     def find_or_create(self, embedding, camera_id, snapshot=None):
-        """
-        Given a face embedding from an unknown person on camera_id:
-        - If they match a known unknown → return existing global ID
-        - If new → create new global ID
-        Returns: global_id (string like 'UNK-001')
-        """
         with self.lock:
             best_id    = None
             best_score = -1.0
 
             for gid, data in self.unknown_gallery.items():
                 score = self._cosine_similarity(embedding, data['embedding'])
+                # boost score for recently seen persons on same camera
+                if camera_id in data.get('cameras', set()):
+                    score = min(score * 1.15, 1.0)
                 if score > best_score:
                     best_score = score
                     best_id    = gid
@@ -77,11 +59,12 @@ class ReIDManager:
                 gid = f"UNK-{self.next_global_id:03d}"
                 self.next_global_id += 1
                 self.unknown_gallery[gid] = {
-                    'embedding':   embedding,
-                    'first_seen':  now,
-                    'last_seen':   now,
-                    'cameras':     {camera_id},
-                    'snapshot':    snapshot
+                    'embedding':  embedding,
+                    'first_seen': now,
+                    'last_seen':  now,
+                    'cameras':    {camera_id},
+                    'snapshot':   snapshot,
+                    'detection_count': 1
                 }
                 print(f"New unknown registered: {gid} on {camera_id}")
                 return gid, 0.0

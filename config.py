@@ -23,7 +23,7 @@ EMBEDDING_SIZE            = 512
 MIN_FACE_SIZE             = 60
 
 # ── Tracker settings ─────────────────────────────────────
-MAX_AGE      = 120
+MAX_AGE      = 200
 N_INIT       = 2
 MAX_IOU_DIST = 0.7
 

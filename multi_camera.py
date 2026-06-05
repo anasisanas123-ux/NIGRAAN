@@ -155,15 +155,18 @@ def camera_worker(cam_id, source, result_queue):
 
             if rec['is_known']:
                 # ── known person ──────────────────────────
-                stable_uid = rec['student_id']
+                stable_uid       = rec['student_id']
                 rec['global_id'] = stable_uid
+
+                # cancel any pending unknown log for this tracker
+                cached_uid = tracker_to_uid.get(f"{cam_id}_{temp_tracker}")
+                if cached_uid and cached_uid in pending_log_time:
+                    pending_log_time.pop(cached_uid, None)
 
                 if stable_uid not in logged_ids:
                     if stable_uid not in pending_log_time:
-                        # first time seen — start timer
                         pending_log_time[stable_uid] = now
-                    elif now - pending_log_time[stable_uid] >= 1.0:
-                        # stable for 1 second — log once
+                    elif now - pending_log_time[stable_uid] >= 0.5:
                         logged_ids.add(stable_uid)
                         pending_log_time.pop(stable_uid, None)
                         threading.Thread(
@@ -194,10 +197,8 @@ def camera_worker(cam_id, source, result_queue):
 
                     if global_id not in logged_ids:
                         if global_id not in pending_log_time:
-                            # first time seen — start timer
                             pending_log_time[global_id] = now
-                        elif now - pending_log_time[global_id] >= 2.0:
-                            # stable for 2 seconds — log once
+                        elif now - pending_log_time[global_id] >= 5.0:
                             logged_ids.add(global_id)
                             pending_log_time.pop(global_id, None)
                             threading.Thread(

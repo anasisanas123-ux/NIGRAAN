@@ -30,11 +30,8 @@ class FaceRecognizer:
         self.known_names      = {}
         self.emb_matrix       = None
         self.emb_ids          = []
-
-        # voting buffer per tracker_id
-        # keeps last N predictions and returns majority
-        self.vote_buffer = {}
-        self.vote_size   = 7
+        self.vote_buffer      = {}
+        self.vote_size        = 3
 
         self.load_database()
         self._build_embedding_matrix()
@@ -122,10 +119,6 @@ class FaceRecognizer:
         return self.emb_ids[best_idx], float(scores[best_idx])
 
     def recognize(self, face_crop_rgb, tracker_id=None):
-        """
-        Recognize with majority voting for stability.
-        tracker_id: use to maintain per-person vote buffer
-        """
         unknown = {
             'is_known': False, 'student_id': None,
             'name': 'Unknown', 'confidence': 0.0
@@ -146,39 +139,25 @@ class FaceRecognizer:
         else:
             raw_pred = 'unknown'
 
-        # ── majority voting ────────────────────────────
+        # majority voting with small window
         key = tracker_id if tracker_id else 'default'
         if key not in self.vote_buffer:
             self.vote_buffer[key] = deque(maxlen=self.vote_size)
 
         self.vote_buffer[key].append(raw_pred)
 
-        # get majority vote
-        votes  = Counter(self.vote_buffer[key])
+        votes             = Counter(self.vote_buffer[key])
         winner, win_count = votes.most_common(1)[0]
 
-        # only accept if majority (more than half) agree
-        if winner == 'unknown' or win_count < (self.vote_size // 2 + 1):
+        if winner == 'unknown' or win_count < 2:
             return unknown
 
-        # get average confidence for winner
-        winner_scores = []
-        temp_emb      = query_emb
-        for sid, emb in self.known_embeddings.items():
-            if sid == winner:
-                s = float(np.dot(temp_emb, emb) /
-                         (np.linalg.norm(temp_emb) *
-                          np.linalg.norm(emb) + 1e-10))
-                winner_scores.append(s)
-
-        avg_conf = float(np.mean(winner_scores)) if winner_scores else best_score
-        name     = self.known_names.get(winner, winner)
-
-        print(f"Recognized: {name} | Score: {avg_conf:.4f} | Votes: {win_count}/{self.vote_size}")
+        name = self.known_names.get(winner, winner)
+        print(f"Recognized: {name} | Score: {best_score:.4f} | Votes: {win_count}/{self.vote_size}")
 
         return {
             'is_known':   True,
             'student_id': winner,
             'name':       name,
-            'confidence': avg_conf
+            'confidence': best_score
         }

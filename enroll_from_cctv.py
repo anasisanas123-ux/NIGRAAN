@@ -5,152 +5,267 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import cv2
 import time
 import numpy as np
-from facenet_pytorch import MTCNN
-import torch
 import config
 
-device   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-detector = MTCNN(
-    keep_all=False,
-    device=device,
-    min_face_size=60,
-    thresholds=[0.6, 0.7, 0.85],
-    post_process=False
-)
+# ── Pose guide ────────────────────────────────────────────
+POSES = [
+    (3, "Look STRAIGHT at camera",        "Normal position"),
+    (2, "Turn head 20° LEFT",             "Slow turn left"),
+    (2, "Turn head 20° RIGHT",            "Slow turn right"),
+    (2, "SMILE naturally",                "Natural smile"),
+    (2, "Look slightly UP",               "Chin up slightly"),
+    (2, "Look slightly DOWN",             "Chin down slightly"),
+    (2, "Look STRAIGHT — move CLOSER",    "1 meter from camera"),
+]
 
-def enroll_from_camera(student_id, student_name, camera_id, num_photos=50):
+def connect_camera(source):
+    os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = \
+        'rtsp_transport;udp|fflags;nobuffer|flags;low_delay'
+    cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,  1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    time.sleep(2)
+    for _ in range(10):
+        cap.read()
+    ret, frame = cap.read()
+    if not ret or frame is None:
+        return None
+    return cap
+
+
+def draw_overlay(frame, pose_name, pose_hint, count,
+                 total, pose_idx, total_poses,
+                 countdown, face_detected):
+
+    h, w = frame.shape[:2]
+    overlay = frame.copy()
+
+    # top bar
+    cv2.rectangle(overlay, (0,0), (w,70), (10,15,30), -1)
+
+    # pose counter
+    cv2.putText(overlay,
+                f"Pose {pose_idx+1}/{total_poses}",
+                (20, 28),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                (100,180,255), 2)
+
+    # pose name
+    cv2.putText(overlay, pose_name,
+                (20, 58),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                (255,255,255), 2)
+
+    # pose hint
+    cv2.putText(overlay, pose_hint,
+                (w-280, 35),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                (150,150,150), 1)
+
+    # face guide box
+    bx1 = w//2 - 130
+    by1 = h//2 - 160
+    bx2 = w//2 + 130
+    by2 = h//2 + 160
+    color = (0,255,100) if face_detected else (0,100,255)
+    cv2.rectangle(overlay, (bx1,by1), (bx2,by2), color, 2)
+
+    # corner guides
+    cs = 20
+    for (x,y) in [(bx1,by1),(bx2,by1),(bx1,by2),(bx2,by2)]:
+        dx = cs if x == bx1 else -cs
+        dy = cs if y == by1 else -cs
+        cv2.line(overlay, (x,y), (x+dx,y), color, 3)
+        cv2.line(overlay, (x,y), (x,y+dy), color, 3)
+
+    # face status
+    status     = "Face detected — hold position" \
+                 if face_detected else "Position face inside box"
+    status_col = (0,255,100) if face_detected else (0,100,255)
+    cv2.putText(overlay, status,
+                (w//2 - 160, by2+30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                status_col, 2)
+
+    # countdown circle
+    if countdown > 0 and face_detected:
+        cv2.circle(overlay, (w-70, h-70), 45, (30,40,60), -1)
+        cv2.circle(overlay, (w-70, h-70), 45, (0,255,100), 2)
+        cv2.putText(overlay, str(countdown),
+                    (w-82 if countdown>9 else w-76, h-57),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.2,
+                    (0,255,100), 3)
+
+    # progress bar bottom
+    bar_w = w - 40
+    cv2.rectangle(overlay, (20,h-20), (20+bar_w,h-8),
+                  (30,40,60), -1)
+    filled = int(bar_w * (count / max(total,1)))
+    if filled > 0:
+        cv2.rectangle(overlay,
+                      (20, h-20),
+                      (20+filled, h-8),
+                      (0,200,80), -1)
+
+    # photo count
+    cv2.putText(overlay,
+                f"Photos: {count}/{total}",
+                (20, h-28),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                (150,150,150), 1)
+
+    # blend overlay
+    result = cv2.addWeighted(overlay, 0.85, frame, 0.15, 0)
+    return result
+
+
+def enroll_student_cctv(student_id, student_name,
+                        camera_source, cam_id):
+
     save_dir = os.path.join(
         config.RAW_IMAGES_DIR,
-        f"{student_id}_{student_name.replace(' ', '_')}"
+        f"{student_id}_{student_name.replace(' ','_')}"
     )
     os.makedirs(save_dir, exist_ok=True)
 
     existing = len([
         f for f in os.listdir(save_dir)
-        if f.lower().endswith(('.jpg', '.jpeg', '.png'))
+        if f.lower().endswith(('.jpg','.jpeg','.png'))
     ])
 
-    source = config.CAMERA_SOURCES[camera_id]
-    print(f"\nConnecting to {camera_id}: {source}")
-
-    cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-    if not cap.isOpened():
-        print(f"Cannot connect to {camera_id}")
+    print(f"\nConnecting to {cam_id}...")
+    cap = connect_camera(camera_source)
+    if cap is None:
+        print(f"Cannot connect to {cam_id}")
         return 0
 
-    print(f"Camera connected.")
-    print(f"\nEnrolling: {student_name} ({student_id})")
+    print(f"Connected. Enrolling: {student_name} ({student_id})")
     print(f"Existing photos: {existing}")
-    print(f"Target: {num_photos} new photos")
-    print(f"\nInstructions:")
-    print(f"  Stand directly under the camera")
-    print(f"  Look UP at the camera")
-    print(f"  Slowly turn head left and right")
-    print(f"  Move closer and further")
-    print(f"  Auto-captures when face detected")
-    print(f"  Press Q to finish\n")
+    print("\nInstructions:")
+    print("  Follow each pose shown on screen")
+    print("  System auto-captures when face is detected")
+    print("  Press SPACE to capture manually")
+    print("  Press S to skip pose")
+    print("  Press Q to finish early\n")
 
+    # try to load face detector
+    try:
+        from facenet_pytorch import MTCNN
+        import torch
+        device   = torch.device(
+            'cuda' if torch.cuda.is_available() else 'cpu'
+        )
+        detector = MTCNN(
+            keep_all=False, device=device,
+            min_face_size=40,
+            thresholds=[0.6,0.7,0.85],
+            post_process=False
+        )
+        use_detector = True
+        print("Face detector loaded")
+    except Exception:
+        use_detector = False
+        print("Face detector not available — manual capture only")
+
+    total_photos  = sum(p[0] for p in POSES)
     count         = 0
-    last_saved    = time.time()
-    save_interval = 0.4
+    pose_idx      = 0
+    pose_count    = 0
+    last_capture  = 0
+    capture_interval = 0.8
 
-    while count < num_photos:
+    while pose_idx < len(POSES):
         ret, frame = cap.read()
-        if not ret:
+        if not ret or frame is None:
             continue
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        display   = frame.copy()
+        pose_photos = POSES[pose_idx][0]
+        pose_name   = POSES[pose_idx][1]
+        pose_hint   = POSES[pose_idx][2]
 
         # detect face
-        try:
-            boxes, probs = detector.detect(frame_rgb)
-        except Exception:
-            boxes, probs = None, None
-
         face_detected = False
-        face_size     = 0
+        if use_detector:
+            try:
+                rgb   = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                boxes, probs = detector.detect(rgb)
+                if boxes is not None and len(boxes) > 0:
+                    if probs[0] and probs[0] > 0.85:
+                        face_detected = True
+            except:
+                pass
+        else:
+            face_detected = True
 
-        if boxes is not None and len(boxes) > 0:
-            box  = boxes[0]
-            prob = probs[0] if probs is not None else 0
+        # auto capture
+        now = time.time()
+        if face_detected and \
+           pose_count < pose_photos and \
+           now - last_capture >= capture_interval:
+            total_num = existing + count + 1
+            path      = os.path.join(
+                save_dir,
+                f"pose{pose_idx+1:02d}_{total_num:04d}.jpg"
+            )
+            cv2.imwrite(path, frame)
+            count      += 1
+            pose_count += 1
+            last_capture = now
+            print(f"  Pose {pose_idx+1} photo "
+                  f"{pose_count}/{pose_photos} "
+                  f"(total {count}/{total_photos})")
 
-            if prob and prob > 0.85:
-                x1 = max(0, int(box[0]))
-                y1 = max(0, int(box[1]))
-                x2 = min(frame.shape[1], int(box[2]))
-                y2 = min(frame.shape[0], int(box[3]))
-                face_size = min(x2-x1, y2-y1)
+        # move to next pose
+        if pose_count >= pose_photos:
+            pose_idx  += 1
+            pose_count = 0
+            if pose_idx < len(POSES):
+                print(f"\n  Next pose: {POSES[pose_idx][1]}")
+                time.sleep(1.5)
+            continue
 
-                if face_size >= 40:
-                    face_detected = True
-                    cv2.rectangle(display, (x1, y1), (x2, y2),
-                                  (0, 255, 0), 3)
+        countdown = pose_photos - pose_count
+        display   = draw_overlay(
+            frame.copy(), pose_name, pose_hint,
+            count, total_photos, pose_idx,
+            len(POSES), countdown, face_detected
+        )
 
-                    if time.time() - last_saved >= save_interval:
-                        total = existing + count + 1
-                        path  = os.path.join(
-                            save_dir,
-                            f"cctv_{camera_id}_{total:04d}.jpg"
-                        )
-                        cv2.imwrite(path, frame)
-                        count      += 1
-                        last_saved  = time.time()
-                        print(f"  Captured {count}/{num_photos} "
-                              f"(face: {face_size}px)")
-                else:
-                    cv2.rectangle(display, (x1, y1), (x2, y2),
-                                  (0, 255, 255), 2)
+        cv2.imshow(
+            f"Enrollment — {student_name} — {cam_id}",
+            display
+        )
 
-        # progress bar
-        progress = int((count / num_photos) * (frame.shape[1] - 40))
-        cv2.rectangle(display,
-                      (20, display.shape[0]-50),
-                      (display.shape[1]-20, display.shape[0]-20),
-                      (50, 50, 50), -1)
-        if progress > 0:
-            cv2.rectangle(display,
-                          (20, display.shape[0]-50),
-                          (20+progress, display.shape[0]-20),
-                          (0, 255, 0) if face_detected else (100,100,100),
-                          -1)
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord(' '):
+            # manual capture
+            total_num = existing + count + 1
+            path      = os.path.join(
+                save_dir,
+                f"pose{pose_idx+1:02d}_{total_num:04d}.jpg"
+            )
+            cv2.imwrite(path, frame)
+            count      += 1
+            pose_count += 1
+            last_capture = now
+            print(f"  Manual: pose {pose_idx+1} "
+                  f"photo {pose_count}/{pose_photos}")
 
-        # status
-        status = f"CAPTURING {count}/{num_photos}" \
-                 if face_detected \
-                 else "LOOK UP AT CAMERA — FACE NOT DETECTED"
-        color  = (0, 255, 0) if face_detected else (0, 0, 255)
+        elif key == ord('s'):
+            print(f"  Skipped pose {pose_idx+1}")
+            pose_idx  += 1
+            pose_count = 0
 
-        cv2.putText(display, f"Student: {student_name}",
-                    (20, 35), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (255,255,255), 2)
-        cv2.putText(display, f"Camera: {camera_id}",
-                    (20, 65), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (0,255,255), 1)
-        cv2.putText(display, status,
-                    (20, 100), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7, color, 2)
-        cv2.putText(display, f"Face size: {face_size}px  "
-                              f"(need 40px+)",
-                    (20, 130), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55, (180,180,180), 1)
-        cv2.putText(display, "Q = finish early",
-                    (20, display.shape[0]-60),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55, (150,150,150), 1)
-
-        cv2.imshow(f"CCTV Enrollment — {student_name}", display)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        elif key == ord('q'):
+            print("  Enrollment stopped early")
             break
 
     cap.release()
     cv2.destroyAllWindows()
 
-    print(f"\nDone! {count} photos captured.")
-    print(f"Total photos for {student_name}: {existing + count}")
+    print(f"\nDone! {count} new photos captured for {student_name}")
+    print(f"Total photos: {existing + count}")
     return count
 
 
@@ -160,84 +275,85 @@ def main():
         ("S002", "Anas Ahmed"),
         ("S003", "Rahim"),
         ("S004", "Abdul Basit"),
+        ("S005", "New Student"),
     ]
 
-    cameras = list(config.CAMERA_SOURCES.keys())
+    cameras = {
+        "cam_b": config.CAMERA_SOURCES.get("cam_b"),
+    }
 
     print("=" * 55)
-    print("  Campus Surveillance — CCTV Enrollment Station")
+    print("  Campus Surveillance — CCTV Enrollment System")
     print("=" * 55)
 
-    print("\nStudents:")
+    print("\nRegistered students:")
     for i, (sid, name) in enumerate(students, 1):
         folder = os.path.join(
             config.RAW_IMAGES_DIR,
-            f"{sid}_{name.replace(' ', '_')}"
+            f"{sid}_{name.replace(' ','_')}"
         )
         count = len([
             f for f in os.listdir(folder)
             if f.lower().endswith(('.jpg','.jpeg','.png'))
         ]) if os.path.exists(folder) else 0
-        status = "✓ Ready" if count >= 30 else f"Need more ({count}/30)"
+        status = "✓ Ready" if count >= 10 else f"Need more ({count}/10)"
         print(f"  {i}. {name:20s} — {count:3d} photos — {status}")
 
-    print("\nCameras:")
-    for i, cam in enumerate(cameras, 1):
-        print(f"  {i}. {cam}")
-
     print("\n  0. Exit")
-    print("  R. Rebuild embeddings only")
+    print("\nSelect student number:")
 
     while True:
         try:
-            choice = input("\nStudent number >> ").strip()
-
+            choice = input(">> ").strip()
             if choice == '0':
-                print("Exiting.")
                 break
 
-            if choice.upper() == 'R':
-                print("\nRebuilding all embeddings...")
-                from python_engine.embedding_builder import EmbeddingBuilder
-                builder = EmbeddingBuilder()
-                records = builder.build_database()
-                print(f"\nDone. {len(records)} students rebuilt.")
-                continue
+            # allow custom student
+            if choice.upper() == 'N':
+                new_id   = input("Enter student ID (e.g. S005): ").strip()
+                new_name = input("Enter student name: ").strip()
+                sid, name = new_id, new_name
+            else:
+                idx = int(choice) - 1
+                if not (0 <= idx < len(students)):
+                    print(f"Enter 1-{len(students)}, N for new, or 0")
+                    continue
+                sid, name = students[idx]
 
-            choice = int(choice)
-            if not (1 <= choice <= len(students)):
-                print(f"Enter 1-{len(students)}, R, or 0")
-                continue
+            print(f"\nStarting enrollment for {name}...")
+            print(f"Camera: cam_b")
+            print("Stand 1.5-2 meters from camera")
+            print("Press ENTER when ready...")
+            input()
 
-            sid, name = students[choice - 1]
-
-            print(f"\nSelect camera for {name}:")
-            for i, cam in enumerate(cameras, 1):
-                print(f"  {i}. {cam}")
-            cam_choice = int(input("Camera >> ")) - 1
-            if not (0 <= cam_choice < len(cameras)):
-                print("Invalid camera")
-                continue
-
-            cam_id = cameras[cam_choice]
-
-            # enroll
-            captured = enroll_from_camera(
-                sid, name, cam_id, num_photos=50
+            captured = enroll_student_cctv(
+                sid, name,
+                cameras["cam_b"],
+                "cam_b"
             )
 
             if captured > 0:
-                print("\nRebuilding embeddings automatically...")
-                from python_engine.embedding_builder import EmbeddingBuilder
-                builder = EmbeddingBuilder()
-                builder.build_database()
-                print("Embeddings updated. Student ready for detection.\n")
+                again = input(
+                    "\nEnroll another student? (y/n): "
+                ).strip().lower()
+                if again != 'y':
+                    break
+                print("\nSelect student number:")
 
         except ValueError:
             print("Enter a valid number")
         except KeyboardInterrupt:
             print("\nExiting.")
             break
+
+    # rebuild embeddings after enrollment
+    rebuild = input(
+        "\nRebuild embeddings now? (y/n): "
+    ).strip().lower()
+    if rebuild == 'y':
+        print("\nRunning augmented training...")
+        os.system("python train_arcface.py")
+        print("\nDone! Run python multi_camera.py to test.")
 
 
 if __name__ == "__main__":

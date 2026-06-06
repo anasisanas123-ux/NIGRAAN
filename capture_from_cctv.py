@@ -72,14 +72,11 @@ def capture_cctv_photos(student_folder, camera_source, cam_name, num_photos=25):
 
 if __name__ == "__main__":
     students = [
-        "S001_Umair_Iqbal",
-        "S002_Anas_Ahmed_Rahim",
-        "S003_Abdul_Basit",
-        "S004_Ayan_Iqbal",
-        "S005_Rayan_Iqbal",
-        "S006_Maheen",
-        "S007_Miral",
-    ]
+    ("S001", "Umair_Iqbal"),
+    ("S002", "Anas_Ahmed"),
+    ("S003", "Rahim"),
+    ("S004", "Abdul_Basit"),
+]
 
     cameras = list(config.CAMERA_SOURCES.items())
 
@@ -114,8 +111,10 @@ if __name__ == "__main__":
             print("Enter a number")
 
     cam_id, source = cameras[c_choice]
+    student_id, student_name = students[s_choice]
+    folder_name = student_id + '_' + student_name
     capture_cctv_photos(
-        students[s_choice],
+        folder_name,
         source,
         cam_id,
         num_photos=25

@@ -1,6 +1,11 @@
 const Detection = require("../models/Detection");
 const Unknown = require("../models/Unknown");
 
+// in-memory session log — one entry per student per session
+// resets when Node.js restarts (which is what we want)
+const sessionLogged = new Set(); // known students
+const unknownLogged = new Set(); // unknown tracker IDs
+
 exports.getRecentDetections = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
@@ -28,42 +33,35 @@ exports.ingestDetection = async (req, res) => {
   try {
     const body = req.body;
 
-    // prevent duplicate logs — one per student per hour
+    // known student — log only once per session
     if (body.is_known && body.student_id) {
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const existing = await Detection.findOne({
-        student_id: body.student_id,
-        is_known: true,
-        timestamp: { $gte: oneHourAgo },
-      });
-      if (existing) {
+      const key = `${body.student_id}_${body.camera_id}`;
+      if (sessionLogged.has(key)) {
         return res.status(200).json({
           success: true,
           duplicate: true,
-          message: "Already logged recently",
+          message: "Already logged this session",
         });
       }
+      sessionLogged.add(key);
     }
 
-    // prevent duplicate unknown logs — one per tracker per 10 minutes
+    // unknown person — log only once per tracker ID per session
     if (!body.is_known && body.tracker_id) {
-      const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
-      const existing = await Detection.findOne({
-        tracker_id: body.tracker_id,
-        is_known: false,
-        timestamp: { $gte: tenMinAgo },
-      });
-      if (existing) {
+      if (unknownLogged.has(body.tracker_id)) {
         return res.status(200).json({
           success: true,
           duplicate: true,
-          message: "Unknown already logged recently",
+          message: "Unknown already logged this session",
         });
       }
+      unknownLogged.add(body.tracker_id);
     }
 
+    // save to MongoDB
     const detection = await Detection.create(body);
 
+    // update unknowns collection
     if (!detection.is_known && detection.tracker_id) {
       await Unknown.findOneAndUpdate(
         { tracker_id: detection.tracker_id },
@@ -79,6 +77,7 @@ exports.ingestDetection = async (req, res) => {
       );
     }
 
+    // emit instantly via Socket.io
     const io = req.app.get("io");
     if (io) io.emit("new_detection", detection);
 
@@ -92,6 +91,7 @@ exports.getStats = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const [totalToday, knownToday, unknownToday, totalUnknowns] =
       await Promise.all([
         Detection.countDocuments({ timestamp: { $gte: today } }),
@@ -105,6 +105,7 @@ exports.getStats = async (req, res) => {
         }),
         Unknown.countDocuments({ is_resolved: false }),
       ]);
+
     res.json({
       success: true,
       data: { totalToday, knownToday, unknownToday, totalUnknowns },
@@ -118,8 +119,14 @@ exports.resetDetections = async (req, res) => {
   try {
     await Detection.deleteMany({});
     await Unknown.deleteMany({});
+
+    // clear in-memory session logs on reset
+    sessionLogged.clear();
+    unknownLogged.clear();
+
     const io = req.app.get("io");
     if (io) io.emit("reset");
+
     res.json({ success: true, message: "All logs cleared" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

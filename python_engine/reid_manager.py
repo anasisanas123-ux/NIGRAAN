@@ -60,7 +60,7 @@ class ReIDManager:
                     pair     = frozenset(cameras)
                     pair_key = f"{best_id}_{'-'.join(sorted(cameras))}"
                     last_t   = self.cross_cam_logged.get(pair_key, 0)
-                    if now - last_t > 30:  # 30 second cooldown
+                    if now - last_t > 300:  # 30 second cooldown
                         self.cross_cam_logged[pair_key] = now
                         print(f"Cross-camera match: {best_id} "
                               f"seen on {sorted(cameras)} "

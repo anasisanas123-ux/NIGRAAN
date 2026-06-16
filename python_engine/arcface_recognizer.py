@@ -10,10 +10,10 @@ class ArcFaceRecognizer:
     def __init__(self):
         from insightface.app import FaceAnalysis
         self.app = FaceAnalysis(
-            name='buffalo_l',
+            name='antelopev2',
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
-        self.app.prepare(ctx_id=0, det_size=(640, 640))
+        self.app.prepare(ctx_id=0, det_size=(320, 320))
 
         self.known_embeddings = {}
         self.known_names      = {}
@@ -21,11 +21,11 @@ class ArcFaceRecognizer:
         self.emb_ids          = []
 
         self.load_database()
-        self._build_embedding_matrix()
-        print(f"ArcFaceRecognizer ready — "
+        self._build_matrix()
+        print(f"ArcFaceRecognizer ready (SCRFD + ResNet100) — "
               f"{len(self.known_embeddings)} students loaded")
 
-    def _build_embedding_matrix(self):
+    def _build_matrix(self):
         if not self.known_embeddings:
             self.emb_matrix = None
             self.emb_ids    = []
@@ -40,28 +40,53 @@ class ArcFaceRecognizer:
         self.known_names      = {}
         if not os.path.exists(config.EMBEDDINGS_DIR):
             return
+
         for filename in os.listdir(config.EMBEDDINGS_DIR):
             if not filename.endswith('.npy'):
                 continue
             sid  = filename.replace('.npy', '')
-            emb  = np.load(os.path.join(config.EMBEDDINGS_DIR, filename))
-            norm = np.linalg.norm(emb)
-            self.known_embeddings[sid] = emb / norm if norm > 0 else emb
+            data = np.load(
+                os.path.join(config.EMBEDDINGS_DIR, filename),
+                allow_pickle=True
+            )
+            # support both single embedding and array of embeddings
+            if data.ndim == 1:
+                self.known_embeddings[sid] = [data]
+            else:
+                self.known_embeddings[sid] = list(data)
+
         names_file = os.path.join(config.EMBEDDINGS_DIR, 'names.txt')
         if os.path.exists(names_file):
             with open(names_file, 'r', encoding='utf-8-sig') as f:
                 for line in f:
+                    line = line.strip()
                     if ',' in line:
-                        sid, name = line.strip().split(',', 1)
+                        sid, name = line.split(',', 1)
                         self.known_names[sid.strip()] = name.strip()
+
+    def _build_matrix(self):
+        # flatten all embeddings — each student may have multiple
+        self.emb_ids    = []
+        all_embeddings  = []
+        for sid, embs in self.known_embeddings.items():
+            for emb in embs:
+                self.emb_ids.append(sid)
+                all_embeddings.append(emb)
+        if not all_embeddings:
+            self.emb_matrix = None
+            return
+        self.emb_matrix = np.array(all_embeddings).astype('float32')
 
     def _quality_check(self, face):
         bbox = face.bbox.astype(int)
         w    = bbox[2] - bbox[0]
         h    = bbox[3] - bbox[1]
-        if w < 20 or h < 20:
+        if w < 30 or h < 30:
             return False
-        if face.det_score < 0.45:
+        if face.det_score < 0.50:
+            return False
+        aspect = w / max(h, 1)
+        if aspect < 0.5 or aspect > 2.0:
             return False
         return True
 
@@ -72,11 +97,8 @@ class ArcFaceRecognizer:
         if not z:
             return True
         h_f, w_f = frame_bgr.shape[:2]
-        zx1 = int(z[0]*w_f)
-        zy1 = int(z[1]*h_f)
-        zx2 = int(z[2]*w_f)
-        zy2 = int(z[3]*h_f)
-        return zx1 <= cx <= zx2 and zy1 <= cy <= zy2
+        return (int(z[0]*w_f) <= cx <= int(z[2]*w_f) and
+                int(z[1]*h_f) <= cy <= int(z[3]*h_f))
 
     def _match(self, emb):
         if self.emb_matrix is None:
@@ -86,32 +108,22 @@ class ArcFaceRecognizer:
         return self.emb_ids[best_idx], float(scores[best_idx])
 
     def _open_set_check(self, emb, best_id, best_score):
-        # must be above threshold
         if best_score < config.RECOGNITION_THRESHOLD:
             return False
-
         if self.emb_matrix is None:
             return False
-
-        # all scores sorted descending
         scores        = self.emb_matrix @ emb
         sorted_scores = sorted(scores, reverse=True)
-
-        # best score must be significantly higher than second best
-        # minimum margin of 0.10 — prevents confused identities
         if len(sorted_scores) >= 2:
             margin = sorted_scores[0] - sorted_scores[1]
-            if margin < 0.10:
-                print(f"Rejected — margin too small: {margin:.4f}")
+            if margin < 0.05:
                 return False
-
         return True
 
     def detect_and_recognize(self, frame_bgr, cam_id=None):
         results = []
         try:
             faces = self.app.get(frame_bgr)
-
             for face in faces:
                 if not self._quality_check(face):
                     continue
@@ -121,13 +133,10 @@ class ArcFaceRecognizer:
                 y1   = max(0, bbox[1])
                 x2   = min(frame_bgr.shape[1], bbox[2])
                 y2   = min(frame_bgr.shape[0], bbox[3])
+                cx   = (x1+x2)//2
+                cy   = (y1+y2)//2
 
-                cx = (x1+x2)//2
-                cy = (y1+y2)//2
-
-                if cam_id and not self._in_zone(
-                    cx, cy, frame_bgr, cam_id
-                ):
+                if cam_id and not self._in_zone(cx, cy, frame_bgr, cam_id):
                     continue
 
                 emb  = face.embedding
@@ -135,12 +144,9 @@ class ArcFaceRecognizer:
                 emb  = emb / norm if norm > 0 else emb
 
                 best_id, best_score = self._match(emb)
-                is_known = self._open_set_check(
-                    emb, best_id, best_score
-                )
-
-                name = self.known_names.get(best_id, best_id) \
-                       if is_known else 'Unknown'
+                is_known = self._open_set_check(emb, best_id, best_score)
+                name     = self.known_names.get(best_id, best_id) \
+                           if is_known else 'Unknown'
 
                 if is_known:
                     print(f"Recognized: {name} | "
@@ -162,24 +168,3 @@ class ArcFaceRecognizer:
         except Exception as e:
             print(f"ArcFace error: {e}")
         return results
-
-    def get_embedding(self, face_crop_rgb):
-        try:
-            if face_crop_rgb is None or face_crop_rgb.size == 0:
-                return None
-            img   = cv2.cvtColor(face_crop_rgb, cv2.COLOR_RGB2BGR)
-            img   = cv2.resize(img, (112, 112))
-            faces = self.app.get(img)
-            if not faces:
-                return None
-            emb  = faces[0].embedding
-            norm = np.linalg.norm(emb)
-            return emb / norm if norm > 0 else emb
-        except:
-            return None
-
-    def recognize(self, face_crop_rgb, tracker_id=None):
-        return {
-            'is_known': False, 'student_id': None,
-            'name': 'Unknown', 'confidence': 0.0
-        }

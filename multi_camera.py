@@ -8,8 +8,8 @@ import threading
 import queue
 import requests
 import torch
+import numpy as np
 import config
-from python_engine.face_detector      import FaceDetector
 from python_engine.arcface_recognizer import ArcFaceRecognizer
 from python_engine.body_detector      import BodyDetector
 from python_engine.body_reid          import BodyReID
@@ -23,7 +23,6 @@ if torch.cuda.is_available():
     torch.backends.cudnn.deterministic = False
 
 print("Loading models...")
-detector      = FaceDetector()
 recognizer    = ArcFaceRecognizer()
 body_detector = BodyDetector()
 body_reid     = BodyReID()
@@ -46,42 +45,59 @@ print(f"Video feed server started on port {config.ENGINE_PORT}")
 
 class CameraStream:
     def __init__(self, source):
+        self._source = source
         if isinstance(source, str) and source.startswith('rtsp'):
             os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = \
-                'rtsp_transport;udp|fflags;nobuffer|flags;low_delay|framedrop;1'
+                'rtsp_transport;tcp|fflags;nobuffer|flags;low_delay' \
+                '|framedrop;1|max_delay;0|reorder_queue_size;0'
             self.cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
         else:
             self.cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
             if not self.cap.isOpened():
                 time.sleep(1)
-                self.cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
-            if not self.cap.isOpened():
-                time.sleep(1)
                 self.cap = cv2.VideoCapture(source)
 
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE,   1)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.FRAME_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
-        self.cap.set(cv2.CAP_PROP_FPS, 25)
-        self.frame   = None
-        self.ret     = False
-        self.lock    = threading.Lock()
-        self.running = True
+        self.cap.set(cv2.CAP_PROP_FPS,          25)
+        self.frame           = None
+        self.ret             = False
+        self.lock            = threading.Lock()
+        self.running         = True
+        self.last_frame_time = time.time()
         threading.Thread(target=self._reader, daemon=True).start()
 
     def _reader(self):
+        fails = 0
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
+                fails += 1
+                if fails > 30:
+                    print(f"Reconnecting {self._source[:40]}...")
+                    self.cap.release()
+                    time.sleep(2)
+                    if isinstance(self._source, str) and \
+                       self._source.startswith('rtsp'):
+                        self.cap = cv2.VideoCapture(
+                            self._source, cv2.CAP_FFMPEG
+                        )
+                        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    fails = 0
                 time.sleep(0.01)
                 continue
+            fails = 0
             with self.lock:
-                self.ret   = ret
-                self.frame = frame
+                self.ret             = ret
+                self.frame           = frame
+                self.last_frame_time = time.time()
 
     def read(self):
         with self.lock:
             if self.frame is None:
+                return False, None
+            if time.time() - self.last_frame_time > 3.0:
                 return False, None
             return self.ret, self.frame.copy()
 
@@ -98,6 +114,26 @@ def post_detection(data):
         pass
 
 
+def emb_valid(emb):
+    return (emb is not None and
+            isinstance(emb, np.ndarray) and
+            emb.size > 0)
+
+
+def iou(a, b):
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    ix1   = max(ax1, bx1)
+    iy1   = max(ay1, by1)
+    ix2   = min(ax2, bx2)
+    iy2   = min(ay2, by2)
+    inter = max(0, ix2-ix1) * max(0, iy2-iy1)
+    if inter == 0:
+        return 0.0
+    union = (ax2-ax1)*(ay2-ay1) + (bx2-bx1)*(by2-by1) - inter
+    return inter / max(union, 1)
+
+
 def camera_worker(cam_id, source, result_queue):
     print(f"Connecting to {cam_id}: {source}")
     stream = CameraStream(source)
@@ -109,29 +145,34 @@ def camera_worker(cam_id, source, result_queue):
         if ret and test is not None:
             connected = True
             break
-        print(f"Retrying {cam_id} - attempt {attempt+1}/5")
+        print(f"Retrying {cam_id} attempt {attempt+1}/5")
 
     if not connected:
-        print(f"Cannot connect to {cam_id} after 5 attempts")
+        print(f"Cannot connect to {cam_id}")
         stream.stop()
         return
 
     print(f"{cam_id} connected.")
 
-    frame_count      = 0
-    last_result      = []
-    fps_time         = time.time()
-    fps              = 0
-    tracked          = []
-    logged_ids       = set()
-    tracker_to_uid   = {}
-    pending_log_time = {}
-    locked_ids       = {}
+    frame_count          = 0
+    last_result          = []
+    fps_time             = time.time()
+    fps                  = 0
+    logged_ids           = set()
+    pending_unknown_time = {}
+    cross_cam_fired      = set()
+    locked_ids           = {}
+    LOCK_EXPIRE          = 15.0
+
+    # identity cache — tracker_key -> identity dict
+    # once a tracker is confirmed known we skip ArcFace for them
+    # and use cached identity directly until they leave frame
+    confirmed_ids = {}
 
     while True:
         ret, frame = stream.read()
         if not ret or frame is None:
-            time.sleep(0.001)
+            time.sleep(0.01)
             continue
 
         frame_count += 1
@@ -139,239 +180,346 @@ def camera_worker(cam_id, source, result_queue):
         fps      = 0.92 * fps + 0.08 / max(now - fps_time, 0.001)
         fps_time = now
 
+        # expire old locks and confirmed identities
+        expired = [k for k, v in locked_ids.items()
+                   if now - v.get('time', 0) > LOCK_EXPIRE]
+        for k in expired:
+            del locked_ids[k]
+            confirmed_ids.pop(k, None)
+
         if frame_count % config.FRAME_SKIP != 0:
             try:
-                result_queue.put_nowait((cam_id, frame.copy(),
-                                         last_result, fps))
+                result_queue.put_nowait(
+                    (cam_id, frame.copy(), last_result, fps)
+                )
             except queue.Full:
                 pass
             continue
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_bgr = frame
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # ArcFace detection + recognition with zone filter
-        arc_results = recognizer.detect_and_recognize(
-            frame_bgr, cam_id=cam_id
-        )
-
-        # YOLOv8 body detection with zone filter
+        # body detection always runs — lightweight, needed for tracking
         body_dets = body_detector.detect(frame_rgb, cam_id=cam_id)
 
-        # build final detections
-        detections = []
-
-        for fd in arc_results:
-            fx1, fy1, fx2, fy2 = fd['bbox']
-            fcx = (fx1 + fx2) // 2
-            fcy = (fy1 + fy2) // 2
-            for bd in body_dets:
-                bx1, by1, bx2, by2 = bd['bbox']
-                if bx1 <= fcx <= bx2 and by1 <= fcy <= by2:
-                    fd['body_crop'] = bd.get('body_crop')
-                    fd['bbox']      = bd['bbox']
-                    break
-            if 'body_crop' not in fd:
-                fd['body_crop'] = None
-            detections.append(fd)
-
-        # body-only detections (no face visible)
+        # get current tracker IDs from DeepSORT using body detections
+        # we need tracker IDs before deciding who needs ArcFace
+        # build temp detections for tracking only
+        temp_dets = []
         for bd in body_dets:
+            temp_dets.append({
+                'face_bbox':  None,
+                'body_bbox':  bd['bbox'],
+                'bbox':       bd['bbox'],
+                'is_known':   False,
+                'student_id': None,
+                'name':       'Unknown',
+                'confidence': 0.0,
+                'face_crop':  None,
+                'body_crop':  bd.get('body_crop'),
+            })
+
+        tracked = trackers[cam_id].update(temp_dets, frame_rgb)
+
+        def get_tracker_id(bbox):
+            cx = (bbox[0] + bbox[2]) // 2
+            cy = (bbox[1] + bbox[3]) // 2
+            best_tid  = None
+            best_dist = 9999
+            for t in tracked:
+                tx1, ty1, tx2, ty2 = t['bbox']
+                dist = abs(cx-(tx1+tx2)//2) + abs(cy-(ty1+ty2)//2)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_tid  = t['tracker_id']
+            return best_tid if best_dist < 200 else None
+
+        # determine which body regions need ArcFace
+        # skip ArcFace for trackers already confirmed as known
+        need_arcface_regions = []
+        confirmed_results    = []
+
+        for bd in body_dets:
+            tid         = get_tracker_id(bd['bbox'])
+            tracker_key = f"{cam_id}_{tid}"
+
+            if tracker_key in confirmed_ids:
+                # already confirmed — use cached identity, skip ArcFace
+                cached = confirmed_ids[tracker_key]
+                locked_ids[tracker_key]['time'] = now
+                confirmed_results.append({
+                    'face_bbox':  None,
+                    'body_bbox':  bd['bbox'],
+                    'bbox':       bd['bbox'],
+                    'is_known':   True,
+                    'student_id': cached['student_id'],
+                    'name':       cached['name'],
+                    'confidence': cached['confidence'],
+                    'tracker_id': tid,
+                    'global_id':  cached['student_id'],
+                    'cameras':    [cam_id],
+                    '_cached':    True,
+                })
+            else:
+                need_arcface_regions.append((tid, tracker_key, bd))
+
+        # run ArcFace only on faces that are NOT yet confirmed
+        # build a mask image containing only unconfirmed body regions
+        arc_results = []
+        if need_arcface_regions:
+            arc_results = recognizer.detect_and_recognize(
+                frame_bgr, cam_id=cam_id
+            )
+
+        # match ArcFace results to unconfirmed body regions
+        detections  = list(confirmed_results)
+        used_faces  = set()
+        used_bodies = set()
+
+        for i, (tid, tracker_key, bd) in enumerate(need_arcface_regions):
             bx1, by1, bx2, by2 = bd['bbox']
             bcx = (bx1+bx2)//2
             bcy = (by1+by2)//2
-            has_face = any(
-                det['bbox'][0] <= bcx <= det['bbox'][2] and
-                det['bbox'][1] <= bcy <= det['bbox'][3]
-                for det in detections
-            )
-            if not has_face:
-                detections.append({
-                    'bbox':       bd['bbox'],
-                    'confidence': bd['confidence'],
-                    'face_crop':  None,
-                    'body_crop':  bd.get('body_crop'),
-                    'is_known':   False,
-                    'student_id': None,
-                    'name':       'Unknown',
-                })
 
-        tracked = trackers[cam_id].update(detections, frame_rgb)
-
-        active_keys = {f"{cam_id}_{t['tracker_id']}" for t in tracked}
-        for key in list(locked_ids.keys()):
-            if key not in active_keys:
-                del locked_ids[key]
-
-        results = []
-        for det in detections:
-
-            temp_tracker = None
-            dx = (det['bbox'][0] + det['bbox'][2]) // 2
-            dy = (det['bbox'][1] + det['bbox'][3]) // 2
-            for t in tracked:
-                tx1, ty1, tx2, ty2 = t['bbox']
-                if tx1 <= dx <= tx2 and ty1 <= dy <= ty2:
-                    temp_tracker = t['tracker_id']
+            matched_face = None
+            for fi, fd in enumerate(arc_results):
+                if fi in used_faces:
+                    continue
+                fx1, fy1, fx2, fy2 = fd['bbox']
+                fcx = (fx1+fx2)//2
+                fcy = (fy1+fy2)//2
+                in_body = (bx1 <= fcx <= bx2 and
+                           by1 <= fcy <= by1 + (by2-by1)*0.6)
+                if in_body:
+                    matched_face = (fi, fd)
+                    used_faces.add(fi)
                     break
 
-            tracker_key = f"{cam_id}_{temp_tracker}"
+            if matched_face is not None:
+                fi, fd = matched_face
+                detections.append({
+                    'face_bbox':  fd['bbox'],
+                    'body_bbox':  bd['bbox'],
+                    'bbox':       bd['bbox'],
+                    'is_known':   fd['is_known'],
+                    'student_id': fd['student_id'],
+                    'name':       fd['name'],
+                    'confidence': fd['confidence'],
+                    'face_crop':  fd.get('face_crop'),
+                    'body_crop':  bd.get('body_crop'),
+                    'tracker_id': tid,
+                    '_cached':    False,
+                })
+            else:
+                # body visible but no face matched
+                prev = locked_ids.get(tracker_key, {})
+                detections.append({
+                    'face_bbox':  None,
+                    'body_bbox':  bd['bbox'],
+                    'bbox':       bd['bbox'],
+                    'is_known':   prev.get('is_known', False),
+                    'student_id': prev.get('student_id'),
+                    'name':       prev.get('name', 'Unknown'),
+                    'confidence': prev.get('confidence', 0.0),
+                    'face_crop':  None,
+                    'body_crop':  bd.get('body_crop'),
+                    'tracker_id': tid,
+                    '_cached':    False,
+                })
 
-            # keep known identity if face temporarily not visible
-            prev_lock = locked_ids.get(tracker_key, {})
-            if prev_lock.get('is_known') and not det.get('is_known', False):
-                rec = {
-                    'is_known':   True,
-                    'student_id': prev_lock['student_id'],
-                    'name':       prev_lock['name'],
-                    'confidence': prev_lock['confidence'],
-                    'bbox':       det['bbox'],
-                    'tracker_id': temp_tracker,
-                    'global_id':  prev_lock['student_id'],
-                    'cameras':    [cam_id]
-                }
-                results.append(rec)
+        # process results and handle logging
+        results = []
+
+        for det in detections:
+            tid         = det.get('tracker_id') or \
+                          get_tracker_id(det['bbox'])
+            tracker_key = f"{cam_id}_{tid}"
+            prev        = locked_ids.get(tracker_key, {})
+
+            if det.get('_cached'):
+                # already confirmed known — just append
+                results.append(det)
                 continue
 
-            if tracker_key in locked_ids:
-                locked = locked_ids[tracker_key]
-                rec = {
-                    'is_known':   locked['is_known'],
-                    'student_id': locked.get('student_id'),
-                    'name':       locked['name'],
-                    'confidence': locked['confidence']
+            if det['is_known']:
+                # new confirmation — add to confirmed cache
+                pending_unknown_time.pop(tracker_key, None)
+                pending_unknown_time.pop(
+                    det.get('student_id', ''), None
+                )
+
+                confirmed_ids[tracker_key] = {
+                    'student_id': det['student_id'],
+                    'name':       det['name'],
+                    'confidence': det['confidence'],
                 }
-            else:
-                rec = {
-                    'is_known':   det.get('is_known', False),
-                    'student_id': det.get('student_id'),
-                    'name':       det.get('name', 'Unknown'),
-                    'confidence': det.get('confidence', 0.0)
+                locked_ids[tracker_key] = {
+                    'is_known':   True,
+                    'student_id': det['student_id'],
+                    'name':       det['name'],
+                    'confidence': det['confidence'],
+                    'time':       now,
                 }
-                if rec['is_known']:
-                    locked_ids[tracker_key] = {
-                        'is_known':   True,
-                        'student_id': rec['student_id'],
-                        'name':       rec['name'],
-                        'confidence': rec['confidence']
-                    }
 
-            rec['bbox']       = det['bbox']
-            rec['confidence'] = rec.get('confidence', det.get('confidence', 0))
-            rec['tracker_id'] = temp_tracker
-            rec['global_id']  = None
-            rec['cameras']    = [cam_id]
+                rec = {
+                    'face_bbox':  det['face_bbox'],
+                    'body_bbox':  det['body_bbox'],
+                    'bbox':       det['bbox'],
+                    'is_known':   True,
+                    'student_id': det['student_id'],
+                    'name':       det['name'],
+                    'confidence': det['confidence'],
+                    'tracker_id': tid,
+                    'global_id':  det['student_id'],
+                    'cameras':    [cam_id],
+                }
 
-            if rec['is_known']:
-                stable_uid       = rec['student_id']
-                rec['global_id'] = stable_uid
-
-                cached_uid = tracker_to_uid.get(tracker_key)
-                if cached_uid and cached_uid in pending_log_time:
-                    pending_log_time.pop(cached_uid, None)
-
-                if stable_uid not in logged_ids:
-                    if stable_uid not in pending_log_time:
-                        pending_log_time[stable_uid] = now
-                    elif now - pending_log_time[stable_uid] >= 0.5:
-                        logged_ids.add(stable_uid)
-                        pending_log_time.pop(stable_uid, None)
-                        threading.Thread(
-                            target=post_detection,
-                            args=({
-                                'camera_id':    cam_id,
-                                'student_id':   rec.get('student_id'),
-                                'student_name': rec.get('name', 'Unknown'),
-                                'is_known':     True,
-                                'confidence':   round(
-                                    rec.get('confidence', 0), 4
-                                ),
-                                'tracker_id':   temp_tracker
-                            },),
-                            daemon=True
-                        ).start()
+            elif prev.get('is_known'):
+                # was known before — keep lock
+                locked_ids[tracker_key]['time'] = now
+                rec = {
+                    'face_bbox':  det['face_bbox'],
+                    'body_bbox':  det['body_bbox'],
+                    'bbox':       det['bbox'],
+                    'is_known':   True,
+                    'student_id': prev['student_id'],
+                    'name':       prev['name'],
+                    'confidence': prev['confidence'],
+                    'tracker_id': tid,
+                    'global_id':  prev['student_id'],
+                    'cameras':    [cam_id],
+                }
 
             else:
+                # unknown — run body ReID
                 body_crop = det.get('body_crop')
-                snap_bgr  = cv2.cvtColor(body_crop, cv2.COLOR_RGB2BGR) \
-                            if body_crop is not None else None
-                body_emb  = body_reid.get_embedding(body_crop) \
-                            if body_crop is not None else None
+                body_emb  = None
 
-                if body_emb is not None:
-                    global_id, score = reid.find_or_create(
-                        body_emb, cam_id, frame=snap_bgr
-                    )
-                    rec['global_id'] = global_id
-                    rec['cameras']   = reid.get_cameras_for(global_id)
-                    rec['name']      = global_id
+                if body_crop is not None:
+                    try:
+                        body_emb = body_reid.get_embedding(body_crop)
+                    except Exception:
+                        body_emb = None
 
-                    if temp_tracker:
-                        tracker_to_uid[tracker_key] = global_id
+                global_id    = None
+                reid_cameras = [cam_id]
 
-                    if tracker_key not in locked_ids:
-                        locked_ids[tracker_key] = {
-                            'is_known':   False,
-                            'student_id': None,
-                            'name':       global_id,
-                            'confidence': 0.0
-                        }
+                if emb_valid(body_emb):
+                    try:
+                        snap = None
+                        if body_crop is not None:
+                            snap = cv2.cvtColor(
+                                body_crop, cv2.COLOR_RGB2BGR
+                            )
+                        global_id, _ = reid.find_or_create(
+                            body_emb, cam_id, frame=snap
+                        )
+                        cams = reid.get_cameras_for(global_id)
+                        reid_cameras = list(cams) if cams else [cam_id]
+                    except Exception as e:
+                        print(f"ReID error: {e}")
+                        global_id = None
 
-                    was_known = prev_lock.get('is_known', False)
+                if global_id is None:
+                    global_id = prev.get('name') or \
+                                f"UNK-{abs(hash(tracker_key))%900+100}"
 
-                    if not was_known and global_id not in logged_ids:
-                        if global_id not in pending_log_time:
-                            pending_log_time[global_id] = now
-                        elif now - pending_log_time[global_id] >= 5.0:
-                            logged_ids.add(global_id)
-                            pending_log_time.pop(global_id, None)
-                            threading.Thread(
-                                target=post_detection,
-                                args=({
-                                    'camera_id':    cam_id,
-                                    'student_id':   None,
-                                    'student_name': global_id,
-                                    'is_known':     False,
-                                    'confidence':   0.0,
-                                    'tracker_id':   global_id,
-                                    'snapshot_path': reid.get_snapshot_path(
-                                        global_id
-                                    )
-                                },),
-                                daemon=True
-                            ).start()
+                locked_ids[tracker_key] = {
+                    'is_known':   False,
+                    'student_id': None,
+                    'name':       global_id,
+                    'confidence': 0.0,
+                    'time':       now,
+                }
 
-                    if len(rec['cameras']) > 1:
+                rec = {
+                    'face_bbox':  det['face_bbox'],
+                    'body_bbox':  det['body_bbox'],
+                    'bbox':       det['bbox'],
+                    'is_known':   False,
+                    'student_id': None,
+                    'name':       global_id,
+                    'confidence': 0.0,
+                    'tracker_id': tid,
+                    'global_id':  global_id,
+                    'cameras':    reid_cameras,
+                }
+
+                if len(reid_cameras) > 1:
+                    cross_key = global_id + '_' + \
+                                '_'.join(sorted(reid_cameras))
+                    if cross_key not in cross_cam_fired:
+                        cross_cam_fired.add(cross_key)
                         threading.Thread(
-                            target=lambda gid=global_id,
-                            cams=rec['cameras']:
+                            target=lambda g=global_id,
+                            c=reid_cameras:
                                 requests.post(
                                     f"{config.NODE_API_URL}"
                                     f"/api/cross_camera",
-                                    json={
-                                        'global_id': gid,
-                                        'cameras':   cams
-                                    },
+                                    json={'global_id': g,
+                                          'cameras':   c},
                                     timeout=0.5
                                 ),
                             daemon=True
                         ).start()
 
+            # ── LOGGING ──────────────────────────────────────────
+            log_uid  = rec.get('student_id') or rec.get('global_id')
+            has_face = det.get('face_bbox') is not None
+
+            if log_uid and log_uid not in logged_ids and has_face:
+
+                if rec['is_known']:
+                    logged_ids.add(log_uid)
+                    threading.Thread(
+                        target=post_detection,
+                        args=({
+                            'camera_id':     cam_id,
+                            'student_id':    rec.get('student_id'),
+                            'student_name':  rec.get('name', 'Unknown'),
+                            'is_known':      True,
+                            'confidence':    round(
+                                rec.get('confidence', 0), 4
+                            ),
+                            'tracker_id':    rec.get('global_id'),
+                            'snapshot_path': None
+                        },),
+                        daemon=True
+                    ).start()
+
                 else:
-                    cached = tracker_to_uid.get(tracker_key)
-                    if cached:
-                        rec['global_id'] = cached
-                        rec['name']      = cached
-                        rec['cameras']   = reid.get_cameras_for(cached)
-                    else:
-                        rec['name'] = 'Unknown'
+                    if log_uid not in pending_unknown_time:
+                        pending_unknown_time[log_uid] = now
+                    elif now - pending_unknown_time[log_uid] >= 8.0:
+                        logged_ids.add(log_uid)
+                        pending_unknown_time.pop(log_uid, None)
+                        snap_path = None
+                        try:
+                            snap_path = reid.get_snapshot_path(log_uid)
+                        except Exception:
+                            pass
+                        threading.Thread(
+                            target=post_detection,
+                            args=({
+                                'camera_id':     cam_id,
+                                'student_id':    None,
+                                'student_name':  rec.get('name', 'Unknown'),
+                                'is_known':      False,
+                                'confidence':    0.0,
+                                'tracker_id':    log_uid,
+                                'snapshot_path': snap_path
+                            },),
+                            daemon=True
+                        ).start()
 
             results.append(rec)
 
         last_result = results
 
         try:
-            result_queue.put_nowait((cam_id, frame.copy(), results, fps))
+            result_queue.put_nowait(
+                (cam_id, frame.copy(), results, fps)
+            )
         except queue.Full:
             pass
 
@@ -384,7 +532,8 @@ def run_display(result_queue):
 
     while True:
         try:
-            cam_id, frame, detections, fps = result_queue.get(timeout=0.1)
+            cam_id, frame, detections, fps = \
+                result_queue.get(timeout=0.1)
             latest[cam_id] = (frame, detections, fps)
         except queue.Empty:
             pass
@@ -392,48 +541,31 @@ def run_display(result_queue):
         for cam_id, (frame, detections, fps) in latest.items():
             display = annotator.draw(frame.copy(), detections)
 
-            # draw detection zone
             if hasattr(config, 'DETECTION_ZONE'):
                 z = config.DETECTION_ZONE.get(cam_id)
                 if z:
                     h_d, w_d = display.shape[:2]
-                    zx1 = int(z[0]*w_d)
-                    zy1 = int(z[1]*h_d)
-                    zx2 = int(z[2]*w_d)
-                    zy2 = int(z[3]*h_d)
-                    cv2.rectangle(display,
-                                  (zx1, zy1), (zx2, zy2),
-                                  (0, 255, 0), 2)
-                    cv2.putText(display, "Detection Zone",
-                                (zx1+5, zy1+20),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.5, (0, 255, 0), 1)
-
-            cv2.putText(display, f"{cam_id.upper()}",
-                        (display.shape[1] - 100, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.8, (255, 255, 0), 2)
-
-            cv2.putText(display, f"FPS: {fps:.0f}",
-                        (10, 60),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7, (0, 255, 255), 2)
-
-            for det in detections:
-                if not det.get('is_known') and \
-                   len(det.get('cameras', [])) > 1:
-                    cv2.putText(
+                    cv2.rectangle(
                         display,
-                        f"CROSS-CAM: {det.get('global_id')}",
-                        (10, display.shape[0] - 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7, (0, 0, 255), 2
+                        (int(z[0]*w_d), int(z[1]*h_d)),
+                        (int(z[2]*w_d), int(z[3]*h_d)),
+                        (0, 255, 0), 1
                     )
+
+            cv2.putText(
+                display,
+                f"{cam_id.upper()}  FPS:{fps:.0f}  "
+                f"Det:{len(detections)}  "
+                f"Cached:{sum(1 for d in detections if d.get('_cached'))}",
+                (10, 26),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55, (0, 255, 255), 2
+            )
 
             display  = cv2.resize(display, win_size)
             win_name = f"Campus Surveillance - {cam_id}"
             cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(win_name, win_size[0], win_size[1])
+            cv2.resizeWindow(win_name, *win_size)
             cv2.imshow(win_name, display)
             update_feed(cam_id, display)
 
@@ -446,25 +578,24 @@ def run_display(result_queue):
 if __name__ == "__main__":
     emb_dir   = config.EMBEDDINGS_DIR
     npy_files = [f for f in os.listdir(emb_dir)
-                 if f.endswith('.npy')] if os.path.exists(emb_dir) else []
+                 if f.endswith('.npy')] \
+                if os.path.exists(emb_dir) else []
 
     if not npy_files:
-        print("No embeddings found! Run embedding_builder.py first.")
+        print("No embeddings found. Run arcface_builder.py first.")
         sys.exit(1)
 
     if torch.cuda.is_available():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
-        print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
 
     result_queue = queue.Queue(maxsize=2)
 
     for cam_id, source in config.CAMERA_SOURCES.items():
-        t = threading.Thread(
+        threading.Thread(
             target=camera_worker,
             args=(cam_id, source, result_queue),
             daemon=True
-        )
-        t.start()
+        ).start()
         print(f"Started thread for {cam_id}")
 
     time.sleep(3)

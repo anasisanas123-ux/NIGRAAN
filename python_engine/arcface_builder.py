@@ -1,5 +1,12 @@
 import sys
 import os
+
+# Fix CUDA/cuDNN DLL loading on Windows — must run before onnxruntime import
+if sys.platform == 'win32':
+    import ctypes
+    ctypes.windll.kernel32.SetDllDirectoryW(
+        r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\bin'
+    )
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np

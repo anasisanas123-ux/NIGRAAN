@@ -1,5 +1,12 @@
-import sys
+﻿import sys
 import os
+
+# Fix CUDA/cuDNN DLL loading on Windows â€” must run before onnxruntime import
+if sys.platform == 'win32':
+    import ctypes
+    ctypes.windll.kernel32.SetDllDirectoryW(
+        r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\bin'
+    )
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
@@ -11,9 +18,21 @@ class ArcFaceRecognizer:
         from insightface.app import FaceAnalysis
         self.app = FaceAnalysis(
             name='antelopev2',
-            providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+            providers=[
+                ('TensorrtExecutionProvider', {
+                    'trt_engine_cache_enable': True,
+                    'trt_engine_cache_path': os.path.join(
+                        os.path.dirname(os.path.dirname(
+                            os.path.abspath(__file__))),
+                        'trt_cache'
+                    ),
+                    'trt_fp16_enable': True,
+                }),
+                'CUDAExecutionProvider',
+                'CPUExecutionProvider'
+            ]
         )
-        self.app.prepare(ctx_id=0, det_size=(320, 320))
+        self.app.prepare(ctx_id=0, det_size=(1280, 1280))
 
         self.known_embeddings = {}
         self.known_names      = {}
@@ -22,7 +41,7 @@ class ArcFaceRecognizer:
 
         self.load_database()
         self._build_matrix()
-        print(f"ArcFaceRecognizer ready (SCRFD + ResNet100) — "
+        print(f"ArcFaceRecognizer ready (SCRFD + ResNet100) â€” "
               f"{len(self.known_embeddings)} students loaded")
 
     def _build_matrix(self):
@@ -65,7 +84,7 @@ class ArcFaceRecognizer:
                         self.known_names[sid.strip()] = name.strip()
 
     def _build_matrix(self):
-        # flatten all embeddings — each student may have multiple
+        # flatten all embeddings â€” each student may have multiple
         self.emb_ids    = []
         all_embeddings  = []
         for sid, embs in self.known_embeddings.items():
@@ -159,6 +178,7 @@ class ArcFaceRecognizer:
                     'student_id': best_id if is_known else None,
                     'name':       name,
                     'confidence': best_score,
+                    'embedding':  emb.astype(np.float32).copy(),
                     'face_crop':  frame_bgr[y1:y2, x1:x2],
                     'body_crop':  None,
                     'tracker_id': None,

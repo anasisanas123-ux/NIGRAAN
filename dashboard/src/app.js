@@ -10,6 +10,7 @@ const path     = require('path');
 const studentRoutes   = require('./routes/students');
 const detectionRoutes = require('./routes/detections');
 const unknownRoutes   = require('./routes/unknowns');
+const visitorRoutes   = require('./routes/visitors');
 
 const app    = express();
 const server = http.createServer(app);
@@ -25,6 +26,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/students',   studentRoutes);
 app.use('/api/detections', detectionRoutes);
 app.use('/api/unknowns',   unknownRoutes);
+app.use('/api/visitors',   visitorRoutes);
 
 // health check
 app.get('/api/health', (req, res) => {
@@ -76,6 +78,12 @@ mongoose.connect(MONGO_URI)
     console.log('MongoDB connected:', MONGO_URI);
     server.listen(PORT, () => {
       console.log(`\nServer running at http://localhost:${PORT}`);
+
+      // periodically expire visitors whose valid_until time has passed
+      const { expireOldVisitors } = require('./controllers/visitorController');
+      setInterval(expireOldVisitors, 5 * 60 * 1000); // every 5 minutes
+      expireOldVisitors(); // run once immediately on startup
+
       console.log('API endpoints:');
       console.log(`  GET  http://localhost:${PORT}/api/health`);
       console.log(`  GET  http://localhost:${PORT}/api/students`);

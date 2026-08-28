@@ -6,3 +6,38 @@ __pycache__/
 .env
 *.log
 data/embeddings/*.npy
+
+# Private biometric / surveillance data
+data/raw_images/
+data/processed/
+data/embeddings/
+data/anonymous_face_gallery/
+data/reid_gallery/
+data/gait_gallery_observation/
+data/gait_gallery_runtime_observation/
+data/snapshots/
+data/visitor_photos/
+data/unknown_merge_backups/
+data/reid_reset_backup_*/
+
+# Test images
+test_images/
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Local environments / caches
+venv/
+.venv/
+node_modules/
+__pycache__/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+data/embeddings_backup/

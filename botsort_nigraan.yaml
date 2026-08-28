@@ -1,0 +1,28 @@
+﻿tracker_type: botsort
+
+# Existing detections can still update the tracker at low confidence
+track_high_thresh: 0.25
+track_low_thresh: 0.10
+
+# Do NOT easily create another ID for the same person
+new_track_thresh: 0.25
+
+# Keep a temporarily lost person alive longer
+track_buffer: 90
+
+# More tolerant association with the existing track
+match_thresh: 0.90
+
+fuse_score: True
+
+# Our cameras are fixed, not moving cameras
+gmc_method: none
+
+# BoT-SORT appearance ReID stays OFF for this controlled test
+proximity_thresh: 0.2
+appearance_thresh: 0.8
+with_reid: True
+model: auto
+
+
+

@@ -1,74 +1,397 @@
-import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
 
 import numpy as np
 import torch
-import cv2
 from PIL import Image
-import torchvision.transforms as T
+from torchvision import transforms
+
+import torchreid
+
+sys.path.insert(
+    0,
+    os.path.dirname(
+        os.path.dirname(
+            os.path.abspath(__file__)
+        )
+    )
+)
+
+import config
+
 
 class BodyReID:
+
     def __init__(self):
+
+        # =====================================================
+        # DEVICE
+        # =====================================================
+
         self.device = torch.device(
-            'cuda' if torch.cuda.is_available() else 'cpu'
+            "cuda"
+            if torch.cuda.is_available()
+            else "cpu"
         )
-        self.transform = T.Compose([
-            T.Resize((256, 128)),
-            T.ToTensor(),
-            T.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
+
+        print(f"\nBodyReID device: {self.device}")
+
+        # =====================================================
+        # PROJECT ROOT
+        # =====================================================
+
+        project_root = os.path.dirname(
+            os.path.dirname(
+                os.path.abspath(__file__)
+            )
+        )
+
+        # =====================================================
+        # RE-ID CHECKPOINT
+        # =====================================================
+
+        self.model_path = os.path.join(
+            project_root,
+            "models",
+            "osnet_x1_0_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth"
+        )
+
+        if not os.path.exists(self.model_path):
+
+            raise FileNotFoundError(
+                "\nOSNet Re-ID checkpoint not found:\n"
+                f"{self.model_path}"
+            )
+
+        # =====================================================
+        # IMAGE PREPROCESSING
+        # =====================================================
+
+        self.transform = transforms.Compose([
+            transforms.Resize((256, 128)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[
+                    0.485,
+                    0.456,
+                    0.406
+                ],
+                std=[
+                    0.229,
+                    0.224,
+                    0.225
+                ]
             )
         ])
 
-        try:
-            import torchreid
-            self.model = torchreid.models.build_model(
-                name='osnet_x1_0',
-                num_classes=1000,
-                pretrained=True
+        # =====================================================
+        # BUILD OSNET
+        # =====================================================
+
+        print("Loading OSNet x1.0 architecture...")
+
+        self.model = torchreid.models.build_model(
+            name="osnet_x1_0",
+            num_classes=1000,
+            loss="softmax",
+            pretrained=False
+        )
+
+        # =====================================================
+        # LOAD PERSON RE-ID WEIGHTS
+        # =====================================================
+
+        print(
+            "Loading person-ReID checkpoint:\n"
+            f"{self.model_path}"
+        )
+
+        torchreid.utils.load_pretrained_weights(
+            self.model,
+            self.model_path
+        )
+
+        self.model = self.model.to(
+            self.device
+        )
+
+        self.model.eval()
+
+        print("\n========================================")
+        print("BodyReID ready")
+        print("Model      : OSNet x1.0")
+        print("Dataset    : MSMT17 combineall")
+        print(
+            "Checkpoint : "
+            + os.path.basename(
+                self.model_path
             )
-            self.model = self.model.to(self.device).eval()
-            print(f"BodyReID (OSNet x1_0) ready on {self.device}")
-        except Exception as e:
-            print(f"OSNet failed: {e} — using color histogram")
-            self.model = None
+        )
+        print(f"Device     : {self.device}")
+        print("========================================\n")
 
-    def get_embedding(self, body_crop_rgb):
+
+    # =========================================================
+    # NORMALIZE EMBEDDING
+    # =========================================================
+
+    @staticmethod
+    def _normalize_embedding(
+        embedding
+    ):
+
+        if embedding is None:
+            return None
+
+        embedding = np.asarray(
+            embedding,
+            dtype=np.float32
+        ).flatten()
+
+        norm = np.linalg.norm(
+            embedding
+        )
+
+        if norm <= 1e-10:
+            return None
+
+        return embedding / norm
+
+
+    # =========================================================
+    # PREPARE BODY CROP
+    # =========================================================
+
+    def _prepare_crop(
+        self,
+        crop
+    ):
+
+        if crop is None:
+            return None
+
+        if not isinstance(
+            crop,
+            np.ndarray
+        ):
+            return None
+
+        if crop.size == 0:
+            return None
+
+        height, width = crop.shape[:2]
+
+        if width < 30:
+            return None
+
+        if height < 60:
+            return None
+
+        image = Image.fromarray(
+            crop
+        )
+
+        tensor = self.transform(
+            image
+        )
+
+        tensor = tensor.unsqueeze(
+            0
+        )
+
+        return tensor.to(
+            self.device
+        )
+
+
+    # =========================================================
+    # SINGLE EMBEDDING
+    # =========================================================
+
+    def get_embedding(
+        self,
+        crop
+    ):
+
+        tensor = self._prepare_crop(
+            crop
+        )
+
+        if tensor is None:
+            return None
+
         try:
-            if body_crop_rgb is None or body_crop_rgb.size == 0:
-                return None
 
-            if self.model is not None:
-                img    = Image.fromarray(body_crop_rgb).resize(
-                    (128, 256), Image.BILINEAR
+            with torch.no_grad():
+
+                features = self.model(
+                    tensor
                 )
-                tensor = self.transform(img).unsqueeze(0).to(self.device)
-                with torch.no_grad():
-                    emb = self.model(tensor).cpu().numpy().flatten()
-                norm = np.linalg.norm(emb)
-                return emb / norm if norm > 0 else emb
-            else:
-                return self._color_histogram(body_crop_rgb)
 
-        except Exception:
-            return self._color_histogram(body_crop_rgb)
+            features = (
+                features
+                .detach()
+                .cpu()
+                .numpy()
+                .flatten()
+            )
 
-    def _color_histogram(self, img_rgb):
-        img  = cv2.resize(img_rgb, (64, 128))
-        hist = []
-        for ch in range(3):
-            h = cv2.calcHist([img], [ch], None, [32], [0, 256])
-            hist.extend(h.flatten())
-        hist = np.array(hist, dtype=np.float32)
-        norm = np.linalg.norm(hist)
-        return hist / norm if norm > 0 else hist
+            embedding = (
+                self._normalize_embedding(
+                    features
+                )
+            )
 
-    def similarity(self, a, b):
-        if a is None or b is None:
+            return embedding
+
+        except Exception as error:
+
+            print(
+                f"[BODY REID ERROR] "
+                f"{error}"
+            )
+
+            return None
+
+
+    # =========================================================
+    # BATCH EMBEDDINGS
+    # =========================================================
+
+    def get_embeddings(
+        self,
+        crops
+    ):
+
+        if not crops:
+            return []
+
+        tensors = []
+        valid_indices = []
+
+        for index, crop in enumerate(
+            crops
+        ):
+
+            tensor = self._prepare_crop(
+                crop
+            )
+
+            if tensor is None:
+                continue
+
+            tensors.append(
+                tensor.squeeze(0)
+            )
+
+            valid_indices.append(
+                index
+            )
+
+        results = [
+            None
+            for _ in crops
+        ]
+
+        if not tensors:
+            return results
+
+        batch = torch.stack(
+            tensors
+        ).to(
+            self.device
+        )
+
+        try:
+
+            with torch.no_grad():
+
+                features = self.model(
+                    batch
+                )
+
+            features = (
+                features
+                .detach()
+                .cpu()
+                .numpy()
+            )
+
+            for (
+                original_index,
+                feature
+            ) in zip(
+                valid_indices,
+                features
+            ):
+
+                results[
+                    original_index
+                ] = (
+                    self._normalize_embedding(
+                        feature
+                    )
+                )
+
+        except Exception as error:
+
+            print(
+                f"[BODY REID BATCH ERROR] "
+                f"{error}"
+            )
+
+        return results
+
+
+    # =========================================================
+    # COSINE SIMILARITY
+    # =========================================================
+
+    @staticmethod
+    def similarity(
+        embedding_a,
+        embedding_b
+    ):
+
+        if (
+            embedding_a is None
+            or
+            embedding_b is None
+        ):
             return 0.0
-        if a.shape != b.shape:
+
+        embedding_a = np.asarray(
+            embedding_a,
+            dtype=np.float32
+        ).flatten()
+
+        embedding_b = np.asarray(
+            embedding_b,
+            dtype=np.float32
+        ).flatten()
+
+        if (
+            embedding_a.shape
+            !=
+            embedding_b.shape
+        ):
             return 0.0
-        return float(np.dot(a, b) /
-                     (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
+
+        return float(
+            np.dot(
+                embedding_a,
+                embedding_b
+            )
+            /
+            (
+                np.linalg.norm(
+                    embedding_a
+                )
+                *
+                np.linalg.norm(
+                    embedding_b
+                )
+                +
+                1e-10
+            )
+        )

@@ -1,6 +1,6 @@
 import cv2
 
-RTSP_URL = "RTSP_URL_REDACTED"
+RTSP_URL = __import__("config").CAMERA_SOURCES["cam_b"]
 
 print("Connecting to Dahua camera...")
 print(f"URL: {RTSP_URL}")
@@ -10,7 +10,7 @@ cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 if not cap.isOpened():
     print("\nFAILED — trying sub stream...")
-    SUB_URL = "RTSP_URL_REDACTED"
+    SUB_URL = __import__("config").CAMERA_SOURCES["cam_b"]
     cap = cv2.VideoCapture(SUB_URL, cv2.CAP_FFMPEG)
 
 if not cap.isOpened():

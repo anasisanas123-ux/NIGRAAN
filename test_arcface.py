@@ -21,7 +21,7 @@ with open('data/embeddings/names.txt','r') as f:
             sid, name = line.strip().split(',',1)
             names[sid.strip()] = name.strip()
 
-cap = cv2.VideoCapture('RTSP_URL_REDACTED', cv2.CAP_FFMPEG)
+cap = cv2.VideoCapture(__import__("config").CAMERA_SOURCES["cam_b"], cv2.CAP_FFMPEG)
 for i in range(30): cap.read()
 ret, frame = cap.read()
 cap.release()

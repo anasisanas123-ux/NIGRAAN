@@ -1,5 +1,12 @@
 ﻿from pathlib import Path
+import os
+import threading
+import uuid
+
 import numpy as np
+
+
+_GALLERY_LOCK = threading.RLock()
 
 
 class GaitSignatureEngine:
@@ -86,6 +93,12 @@ class GaitSignatureEngine:
             dtype=np.float32
         )
 
+        if kp.ndim != 2 or kp.shape[0] < 17 or kp.shape[1] < 3:
+            return None
+
+        if not np.isfinite(kp[:17, :3]).all():
+            return None
+
         # Require all lower-body joints
         # with modest confidence.
         for idx in self.LOWER_BODY:
@@ -94,10 +107,13 @@ class GaitSignatureEngine:
                 return None
 
 
-        x1, y1, x2, y2 = [
-            float(v)
-            for v in bbox
-        ]
+        try:
+            x1, y1, x2, y2 = [float(v) for v in bbox]
+        except (TypeError, ValueError):
+            return None
+
+        if not np.isfinite([x1, y1, x2, y2]).all() or y2 <= y1:
+            return None
 
         body_height = max(
             y2 - y1,
@@ -203,7 +219,8 @@ class GaitSignatureEngine:
 
     def build_signature(
         self,
-        frame_features
+        frame_features,
+        timestamps=None
     ):
 
         if len(frame_features) < 15:
@@ -216,11 +233,24 @@ class GaitSignatureEngine:
         )
 
 
-        old_x = np.linspace(
-            0.0,
-            1.0,
-            len(data)
-        )
+        if data.ndim != 2 or not np.isfinite(data).all():
+            return None
+
+        if timestamps is not None:
+            times = np.asarray(timestamps, dtype=np.float64).flatten()
+            if times.size != len(data) or not np.isfinite(times).all():
+                return None
+            order = np.argsort(times, kind="stable")
+            times = times[order]
+            data = data[order]
+            keep = np.concatenate(([True], np.diff(times) > 1e-6))
+            times = times[keep]
+            data = data[keep]
+            if len(data) < 15:
+                return None
+            old_x = (times - times[0]) / max(times[-1] - times[0], 1e-6)
+        else:
+            old_x = np.linspace(0.0, 1.0, len(data))
 
         new_x = np.linspace(
             0.0,
@@ -320,42 +350,31 @@ class GaitSignatureEngine:
         )
 
 
-        if path.exists():
+        if signature.ndim != 1 or not signature.size or not np.isfinite(signature).all():
+            return
 
-            old = np.load(
-                path
-            )
+        with _GALLERY_LOCK:
+            if path.exists():
+                try:
+                    old = np.load(path, allow_pickle=False)
+                    if old.ndim == 1:
+                        old = old.reshape(1, -1)
+                    if old.ndim != 2 or old.shape[1] != signature.size or not np.isfinite(old).all():
+                        old = np.empty((0, signature.size), dtype=np.float32)
+                except (OSError, ValueError):
+                    old = np.empty((0, signature.size), dtype=np.float32)
+            else:
+                old = np.empty((0, signature.size), dtype=np.float32)
 
-            if old.ndim == 1:
-
-                old = old.reshape(
-                    1,
-                    -1
-                )
-
-
-            data = np.vstack(
-                [
-                    old,
-                    signature.reshape(
-                        1,
-                        -1
-                    )
-                ]
-            )
-
-        else:
-
-            data = signature.reshape(
-                1,
-                -1
-            )
-
-
-        np.save(
-            path,
-            data
-        )
+            data = np.vstack([old, signature.reshape(1, -1)])[-100:]
+            temp_path = path.with_name(f".{path.stem}.{uuid.uuid4().hex}.tmp")
+            try:
+                with temp_path.open("wb") as stream:
+                    np.save(stream, data, allow_pickle=False)
+                os.replace(temp_path, path)
+            finally:
+                if temp_path.exists():
+                    temp_path.unlink()
 
 
         print(
@@ -370,6 +389,10 @@ class GaitSignatureEngine:
         signature
     ):
 
+        signature = np.asarray(signature, dtype=np.float32).flatten()
+        if not signature.size or not np.isfinite(signature).all():
+            return None, 0.0, 0.0
+
         rankings = []
 
 
@@ -383,9 +406,8 @@ class GaitSignatureEngine:
 
             try:
 
-                stored = np.load(
-                    path
-                )
+                with _GALLERY_LOCK:
+                    stored = np.load(path, allow_pickle=False)
 
             except Exception:
 

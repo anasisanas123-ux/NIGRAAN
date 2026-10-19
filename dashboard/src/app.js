@@ -11,6 +11,7 @@ const studentRoutes   = require('./routes/students');
 const detectionRoutes = require('./routes/detections');
 const unknownRoutes   = require('./routes/unknowns');
 const visitorRoutes   = require('./routes/visitors');
+const cameraRoutes    = require('./routes/cameras');
 
 const app    = express();
 const server = http.createServer(app);
@@ -19,7 +20,9 @@ const io     = socketio(server, { cors: { origin: '*' } });
 app.set('io', io);
 
 app.use(cors());
-app.use(express.json());
+// Visitor photos are sent as base64 JSON. Allow requests large enough for
+// compressed images while keeping a finite request-size limit.
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // routes
@@ -27,6 +30,7 @@ app.use('/api/students',   studentRoutes);
 app.use('/api/detections', detectionRoutes);
 app.use('/api/unknowns',   unknownRoutes);
 app.use('/api/visitors',   visitorRoutes);
+app.use('/api/cameras',    cameraRoutes);
 
 // health check
 app.get('/api/health', (req, res) => {
@@ -37,16 +41,19 @@ app.get('/api/health', (req, res) => {
 app.get('/video_feed/:cam_id', (req, res) => {
   const camId  = req.params.cam_id;
   const http_  = require('http');
-  const url    = `http://localhost:${process.env.PYTHON_ENGINE_PORT || 5001}/video_feed/${camId}`;
+  const url    = `http://127.0.0.1:${process.env.PYTHON_ENGINE_PORT || 5001}/video_feed/${encodeURIComponent(camId)}`;
 
   const proxyReq = http_.get(url, (proxyRes) => {
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
     proxyRes.pipe(res);
+    proxyRes.on('error', () => res.destroy());
   });
 
   proxyReq.on('error', () => {
-    res.status(503).json({ error: 'Python engine not running' });
+    if (!res.headersSent) res.status(503).json({ error: 'Python engine not running' });
+    else res.destroy();
   });
+  res.on('close', () => proxyReq.destroy());
 });
 
 // cross camera alert endpoint — called by Python
@@ -75,7 +82,7 @@ const MONGO_URI = process.env.MONGODB_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => {
-    console.log('MongoDB connected:', MONGO_URI);
+    console.log('MongoDB connected');
     server.listen(PORT, () => {
       console.log(`\nServer running at http://localhost:${PORT}`);
 

@@ -351,9 +351,10 @@ def main():
         "\nRebuild embeddings now? (y/n): "
     ).strip().lower()
     if rebuild == 'y':
-        print("\nRunning augmented training...")
-        os.system("python train_arcface.py")
-        print("\nDone! Run python multi_camera.py to test.")
+        print("\nBuilding ArcFace embeddings...")
+        from python_engine.arcface_builder import build_arcface_database
+        build_arcface_database()
+        print("\nDone! Run python multi_camera.py to start detection.")
 
 
 if __name__ == "__main__":

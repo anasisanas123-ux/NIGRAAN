@@ -4,6 +4,8 @@ const ctrl = require("../controllers/detectionController");
 
 router.get("/", ctrl.getRecentDetections);
 router.get("/stats", ctrl.getStats);
+router.get("/search", ctrl.searchDetections);
+router.get("/timeline/:personId", ctrl.getPersonTimeline);
 router.get("/:camId", ctrl.getDetectionsByCamera);
 router.post("/ingest", ctrl.ingestDetection);
 router.delete("/reset", ctrl.resetDetections);

@@ -327,8 +327,9 @@ body::after{
 .log-dot{width:6px;height:6px;flex-shrink:0}
 .log-dot.known{background:var(--green);box-shadow:0 0 6px var(--green)}
 .log-dot.unknown{background:var(--red);box-shadow:0 0 6px var(--red)}
-.log-name{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.log-name{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .log-cam{font-size:9px;color:var(--gold);background:rgba(245,197,24,.1);padding:1px 6px;flex-shrink:0;border:1px solid var(--border2);font-family:'Orbitron',monospace}
+.log-event{font-size:8px;color:var(--blue);background:rgba(77,184,255,.08);padding:2px 5px;flex-shrink:0;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid rgba(77,184,255,.22);font-family:'Orbitron',monospace;text-transform:uppercase}
 .log-conf{font-size:10px;flex-shrink:0;min-width:38px;text-align:right;font-family:'Orbitron',monospace}
 .log-conf.high{color:var(--green)}.log-conf.low{color:var(--red)}
 .log-time{font-size:9px;color:var(--text-muted);flex-shrink:0;min-width:45px;text-align:right;font-family:'Orbitron',monospace}
@@ -429,6 +430,115 @@ body::after{
 .modal-btn{padding:9px 22px;font-size:11px;cursor:pointer;font-weight:700;border:none;transition:.15s;font-family:'Orbitron',monospace;letter-spacing:1px}
 .modal-btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold-dim));color:#000}.modal-btn.primary:hover{box-shadow:0 4px 16px rgba(245,197,24,.3)}
 .modal-btn.cancel{background:var(--bg);color:var(--text-dim);border:1px solid var(--border)}.modal-btn.cancel:hover{border-color:var(--border2);color:var(--text)}
+
+/* Dashboard layout and visitor capture */
+#page-dashboard{background:radial-gradient(ellipse at 50% -10%,rgba(245,197,24,.045),transparent 48%)}
+.dash-page{max-width:1680px;margin:0 auto;padding:24px clamp(14px,2.2vw,34px) 36px}
+.nav{gap:18px;padding:0 clamp(14px,2vw,30px);box-shadow:0 8px 30px rgba(0,0,0,.22)}
+.nav-tab{border-radius:6px 6px 0 0;padding:9px 14px}
+.cam-grid{gap:16px}
+.cam-card,.stat-card,.panel,.enroll-card,.student-card{border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.14)}
+.cam-card{border-color:rgba(245,197,24,.19)}
+.cam-header{min-height:42px}
+.cam-feed{overflow:hidden}
+.cam-info{min-height:34px}
+.stats-row{gap:14px}
+.stat-card{padding:18px 20px}
+.bottom-grid{gap:16px}
+.panel-hdr{min-height:46px}
+.panel-body{scrollbar-width:thin}
+.enroll-card{border-radius:12px;padding:clamp(18px,2vw,28px)}
+.form-input{border-radius:7px;transition:border-color .18s,box-shadow .18s}
+.form-input:focus{box-shadow:0 0 0 3px rgba(245,197,24,.09)}
+.enroll-btn,.add-btn{border-radius:7px;transition:transform .16s,box-shadow .16s,background .16s}
+.enroll-btn:not(:disabled):hover,.add-btn:hover{transform:translateY(-1px)}
+#dash-visitors .enroll-container{width:min(100%,1280px);max-width:1280px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);gap:16px;align-items:start}
+#dash-visitors .enroll-card{min-width:0;margin:0}
+.visitor-capture{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:16px;align-items:center;margin:4px 0 10px}
+.visitor-preview-frame{width:100%;max-width:520px;aspect-ratio:4/3;overflow:hidden;background:#030303;border:1px solid var(--border2);border-radius:10px;display:grid;place-items:center}
+.visitor-preview-frame video,.visitor-preview-frame img{display:block;width:100%;height:100%;object-fit:cover}
+.visitor-preview-frame video[hidden],.visitor-preview-frame img[hidden]{display:none}
+.visitor-capture-actions{display:flex;flex-direction:column;gap:9px}
+.visitor-capture-actions .enroll-btn{width:100%;margin:0;text-align:center}
+.visitor-capture-actions .enroll-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.visitor-upload-btn{display:block;background:var(--bg3);color:var(--text);border:1px solid var(--border2);cursor:pointer}
+.visitor-upload-btn:hover{border-color:var(--gold);color:var(--gold)}
+.visitor-retake-btn{background:var(--bg3);color:var(--text-dim);border:1px solid var(--border2)}
+.visitor-photo-hint{color:var(--text-muted);font-size:11px;line-height:1.5;margin:0 0 18px}
+.visitor-list-card{grid-column:1 / -1}
+.visitor-list{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.visitor-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;background:rgba(255,255,255,.018);border:1px solid var(--border2);border-radius:9px;transition:border-color .18s,background .18s}
+.visitor-row:hover{border-color:rgba(245,197,24,.34);background:rgba(245,197,24,.025)}
+.visitor-name{font-weight:600;color:var(--text);margin-bottom:4px}
+.visitor-meta{font-size:11px;color:var(--text-dim);line-height:1.6}
+.visitor-validity{font-size:10px;color:var(--green);margin-top:4px}
+.visitor-row .clear-btn{flex-shrink:0;border:1px solid rgba(255,69,69,.25);border-radius:5px;padding:7px 10px;color:var(--red)}
+.visitor-row .clear-btn:hover{background:var(--red-dim)}
+.dashboard-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:2px 0 18px}
+.dashboard-eyebrow{font:600 9px 'Orbitron',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+.dashboard-title{font:700 clamp(20px,2.3vw,28px) 'Inter',sans-serif;letter-spacing:-.6px;color:var(--text);margin-bottom:5px}
+.dashboard-description{font-size:12px;color:var(--text-dim);line-height:1.5}
+.dashboard-date{font:10px 'Orbitron',monospace;color:var(--text-muted);white-space:nowrap}
+.cam-live.offline{color:var(--red);border-color:rgba(255,69,69,.35);background:var(--red-dim)}
+.history-filters{display:grid;grid-template-columns:minmax(180px,2fr) repeat(4,minmax(120px,1fr)) auto auto;gap:10px;align-items:end;padding:16px;background:var(--panel);border:1px solid var(--border2);border-radius:10px;margin-bottom:14px}
+.history-filters label{display:grid;gap:6px;color:var(--text-dim);font-size:10px}
+.history-filters input,.history-filters select{min-width:0;width:100%;height:38px;padding:0 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font:12px 'Inter',sans-serif}
+.history-filters .add-btn{height:38px;margin:0;white-space:nowrap}
+.history-export-btn{height:38px;padding:0 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text);font:600 11px 'Inter',sans-serif;white-space:nowrap;cursor:pointer}
+.history-export-btn:hover{border-color:var(--accent);color:var(--accent)}
+.history-status{min-height:18px;margin:0 0 10px;color:var(--text-dim);font-size:11px}
+.history-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:14px}
+.history-panel{min-width:0;min-height:300px}
+.history-results,.timeline-results{display:grid;gap:8px;padding:12px;max-height:62vh;overflow:auto}
+.history-row,.timeline-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--border2);border-radius:8px;background:rgba(255,255,255,.018)}
+.history-row:hover,.timeline-row:hover{border-color:rgba(245,197,24,.35)}
+.history-main{min-width:0}.history-person{font-size:12px;font-weight:600;color:var(--text);overflow-wrap:anywhere}
+.history-detail{margin-top:4px;color:var(--text-dim);font-size:10px;line-height:1.5}
+.history-row button{border:1px solid var(--border2);border-radius:5px;padding:7px 9px;background:transparent;color:var(--gold);cursor:pointer;font-size:10px}
+.history-row button:hover{background:var(--gold-glow)}
+.muted-count{margin-left:auto;color:var(--text-muted);font-size:10px;font-weight:400}
+.zone-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.zone-card{padding:18px;background:var(--panel);border:1px solid var(--border2);border-radius:10px}
+.zone-title{font-weight:600;color:var(--text);margin-bottom:12px}.zone-values{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.zone-value{padding:10px;background:var(--bg3);border-radius:7px}.zone-value strong{display:block;color:var(--gold);font:700 20px 'Orbitron',monospace}.zone-value span{font-size:10px;color:var(--text-dim)}
+.zone-state{margin-top:10px;color:var(--text-muted);font-size:10px}.zone-setup-note{margin-top:16px;max-width:760px;color:var(--text-muted);font-size:11px;line-height:1.6}
+.zone-setup-note code{color:var(--gold-dim)}
+
+@media(max-width:1080px){
+  .nav{height:auto;min-height:56px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
+  .nav-tabs{order:3;width:100%;overflow-x:auto;justify-content:center}
+  .nav-right{margin-left:auto}
+  .stats-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bottom-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .dash-page{padding:14px 12px 26px}
+  .cam-grid{grid-template-columns:1fr}
+  .nav{gap:8px}
+  .nav-brand-text{font-size:14px}
+  .nav-right{gap:5px}
+  .live-badge,#clock{display:none}
+  .nav-tabs{justify-content:flex-start}
+  .nav-tab{white-space:nowrap;padding:9px 12px;font-size:10px}
+  .stats-row{gap:8px}
+  .stat-card{padding:13px 14px}
+  .stat-val{font-size:25px}
+  .form-row{grid-template-columns:1fr;gap:12px}
+  #dash-visitors .enroll-container{grid-template-columns:1fr}
+  .visitor-list-card{grid-column:auto}
+  .visitor-capture{grid-template-columns:1fr;max-width:520px}
+  .visitor-capture-actions{display:grid;grid-template-columns:1fr 1fr}
+  .history-filters{grid-template-columns:1fr 1fr}.history-filters label:first-child{grid-column:1/-1}.history-filters .add-btn,.history-export-btn{width:100%}.history-layout{grid-template-columns:1fr}
+  .visitor-row{align-items:flex-start;padding:12px;gap:10px}
+  .log-item{gap:6px;padding:9px 10px}
+  .log-event{max-width:68px}
+}
+@media(max-width:420px){
+  .nav-right .reset-btn{display:none}
+  .conn-badge{font-size:9px;padding:3px 6px}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .log-event{display:none}
+}
 </style>
 </head>
 <body>
@@ -626,6 +736,9 @@ body::after{
       <button class="nav-tab" onclick="showDashTab('students',this)">&#128101; Students</button>
       <button class="nav-tab" onclick="showDashTab('enroll',this)">&#43; Enroll</button>
       <button class="nav-tab" onclick="showDashTab('visitors',this)">&#128100; Visitors</button>
+      <button class="nav-tab" onclick="showDashTab('history',this)">&#128203; History</button>
+      <button class="nav-tab" onclick="showDashTab('zones',this)">&#9638; Zones</button>
+      <button class="nav-tab" onclick="showDashTab('activity',this)">&#9888; Activity Review</button>
     </div>
     <div class="nav-right">
       <span class="live-badge">&#9679; Live</span>
@@ -638,33 +751,43 @@ body::after{
 
   <!-- LIVE TAB -->
   <div id="dash-live" class="dash-page active">
+    <div class="dashboard-heading">
+      <div>
+        <div class="dashboard-eyebrow">Operations / Monitoring</div>
+        <h1 class="dashboard-title">Campus overview</h1>
+        <p class="dashboard-description">Live camera feeds, recognition activity, and recent alerts.</p>
+      </div>
+      <div class="dashboard-date" id="dashboard-date"></div>
+    </div>
     <div class="cam-grid">
       <div class="cam-card">
         <div class="cam-header">
           <div class="cam-title">&#128247; CAM_A &mdash; Entrance</div>
-          <span class="cam-live">LIVE</span>
+          <span class="cam-live offline" id="cam-status-cam_a">OFFLINE</span>
         </div>
         <div class="cam-feed">
-          <iframe src="http://localhost:5001/video_feed/cam_a" scrolling="no"></iframe>
+          <iframe src="/video_feed/cam_a" scrolling="no" title="Camera A live feed"></iframe>
         </div>
         <div class="cam-info">
-          <span>192.168.100.7</span>
-          <span class="fps-val">FPS: &mdash;</span>
-          <span>Detections: &mdash;</span>
+          <span>Camera A</span>
+          <button type="button" onclick="openZoneEditor('cam_a')">Set zones</button>
+          <span class="fps-val" id="cam-fps-cam_a">FPS: &mdash;</span>
+          <span id="cam-tracks-cam_a">Tracks: &mdash;</span>
         </div>
       </div>
       <div class="cam-card">
         <div class="cam-header">
           <div class="cam-title">&#128247; CAM_B &mdash; Corridor</div>
-          <span class="cam-live">LIVE</span>
+          <span class="cam-live offline" id="cam-status-cam_b">OFFLINE</span>
         </div>
         <div class="cam-feed">
-          <iframe src="http://localhost:5001/video_feed/cam_b" scrolling="no"></iframe>
+          <iframe src="/video_feed/cam_b" scrolling="no" title="Camera B live feed"></iframe>
         </div>
         <div class="cam-info">
-          <span>192.168.100.50</span>
-          <span class="fps-val">FPS: &mdash;</span>
-          <span>Detections: &mdash;</span>
+          <span>Camera B</span>
+          <button type="button" onclick="openZoneEditor('cam_b')">Set zones</button>
+          <span class="fps-val" id="cam-fps-cam_b">FPS: &mdash;</span>
+          <span id="cam-tracks-cam_b">Tracks: &mdash;</span>
         </div>
       </div>
     </div>
@@ -713,6 +836,51 @@ body::after{
     </div>
   </div>
 
+  <!-- SEARCHABLE EVENT HISTORY AND CROSS-CAMERA TIMELINES -->
+  <div id="dash-history" class="dash-page">
+    <div class="dashboard-heading">
+      <div><div class="dashboard-eyebrow">Investigation / Events</div><h1 class="dashboard-title">Incident history</h1><p class="dashboard-description">Search durable detection events and inspect a person’s camera-to-camera timeline.</p></div>
+    </div>
+    <form class="history-filters" id="history-form">
+      <label>Person, name, or track ID<input id="history-query" type="search" maxlength="100" placeholder="e.g. UNK-001 or student ID"></label>
+      <label>Camera<select id="history-camera"><option value="">All cameras</option><option value="cam_a">Camera A</option><option value="cam_b">Camera B</option></select></label>
+      <label>Event<select id="history-event"><option value="">All events</option><option value="entered">Entry</option><option value="first_seen">First seen</option><option value="camera_transition">Camera transition</option><option value="reidentified">Reidentified</option></select></label>
+      <label>From<input id="history-from" type="datetime-local"></label>
+      <label>To<input id="history-to" type="datetime-local"></label>
+      <button class="add-btn" type="submit">Search</button>
+      <button class="history-export-btn" type="button" onclick="exportHistory()">Export CSV</button>
+    </form>
+    <div id="history-status" class="history-status" role="status"></div>
+    <div class="history-layout">
+      <section class="panel history-panel"><div class="panel-hdr">Matching events <span id="history-count" class="muted-count"></span></div><div id="history-results" class="history-results"><div class="placeholder">Choose filters and search the event history.</div></div></section>
+      <section class="panel history-panel"><div class="panel-hdr">Person timeline <span id="timeline-person" class="muted-count">Select a person</span></div><div id="timeline-results" class="timeline-results"><div class="placeholder">Select “View timeline” on an event.</div></div></section>
+    </div>
+  </div>
+
+  <!-- LIVE ZONE OCCUPANCY AND DWELL -->
+  <div id="dash-zones" class="dash-page">
+    <div class="dashboard-heading">
+      <div><div class="dashboard-eyebrow">Operations / Space</div><h1 class="dashboard-title">Zone occupancy</h1><p class="dashboard-description">Live occupancy and dwell estimates for configured camera regions.</p></div>
+      <button class="clear-btn" type="button" onclick="loadCameraHealth()">Refresh</button>
+    </div>
+    <div id="zone-summary" class="zone-grid"><div class="placeholder">Loading camera zones…</div></div>
+    <p class="zone-setup-note" id="zone-setup-note">Define normalized regions in <code>config.py</code> under <code>DETECTION_ZONE</code>. Occupancy updates from currently tracked identities; dwell is an estimate while a track remains in that region.</p>
+  </div>
+
+  <div id="dash-activity" class="dash-page">
+    <div class="dashboard-heading">
+      <div><div class="dashboard-eyebrow">Operations / Review</div><h1 class="dashboard-title">Activity review cues</h1><p class="dashboard-description">Review motion, possible violence, and visible gun/knife cues from your cameras.</p></div>
+      <button class="clear-btn" type="button" onclick="loadBehaviorAlerts()">Refresh</button>
+    </div>
+    <div class="panel" style="padding:14px 16px;margin-bottom:14px;color:var(--text-dim);font-size:11px;line-height:1.6">
+      Model alerts are scene-level review prompts, not confirmed events. Sports, greetings, crowding, and camera differences can cause false alerts. The model does not identify a person or establish intent; verify the footage before acting.
+    </div>
+    <p id="behavior-monitor-status" class="history-status" role="status"></p>
+    <p id="violence-model-status" class="history-status" role="status">Checking violence model…</p>
+    <p id="weapon-model-status" class="history-status" role="status">Checking gun/knife detector…</p>
+    <section class="panel history-panel"><div class="panel-hdr">Recent cues <span id="behavior-count" class="muted-count"></span></div><div id="behavior-results" class="history-results"><div class="placeholder">Loading activity cues…</div></div></section>
+  </div>
+
   <!-- STUDENTS TAB -->
   <div id="dash-students" class="dash-page">
     <div class="page-hdr">
@@ -728,8 +896,8 @@ body::after{
   <div id="dash-enroll" class="dash-page">
     <div class="enroll-container">
       <div class="enroll-card">
-        <div class="enroll-title">&#127916; Live Enrollment via Camera B</div>
-        <div class="enroll-sub">Enroll a new student directly from the CCTV camera. The system guides through 8 poses automatically.</div>
+        <div class="enroll-title">&#127916; Enroll from this dashboard</div>
+        <div class="enroll-sub">Use the computer's browser camera or upload a few clear face photos. The gallery updates as soon as enrollment finishes; no camera enrollment command is needed.</div>
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Student ID</label>
@@ -744,28 +912,45 @@ body::after{
           <label class="form-label">Department</label>
           <input class="form-input" id="e-dept" placeholder="Computer Science" value="Computer Science">
         </div>
-        <button class="enroll-btn" id="enroll-start-btn" onclick="startEnrollment()">&#127916; Start Enrollment</button>
+        <div class="visitor-capture" style="margin-top:16px">
+          <div class="visitor-preview-frame">
+            <video id="e-video" autoplay muted playsinline></video>
+            <canvas id="e-canvas" width="640" height="480" hidden></canvas>
+            <img id="e-preview" alt="Enrollment photo preview" hidden>
+          </div>
+          <div class="visitor-capture-actions">
+            <label class="form-label" for="e-camera-source">Capture source</label>
+            <select class="form-input" id="e-camera-source" onchange="stopEnrollmentCamera()">
+              <option value="cam_a">Camera A (running engine)</option>
+              <option value="cam_b">Camera B (running engine)</option>
+              <option value="browser">Browser webcam (separate camera)</option>
+            </select>
+            <button class="enroll-btn" id="e-camera-start" onclick="startEnrollmentCamera()">&#128247; Start Camera</button>
+            <button class="enroll-btn blue-btn" id="e-capture" onclick="captureEnrollmentSample()" disabled>&#128248; Capture Sample</button>
+            <label class="enroll-btn visitor-upload-btn" for="e-photo-file">&#128193; Upload Photo</label>
+            <input id="e-photo-file" type="file" accept="image/*" multiple hidden onchange="loadEnrollmentPhotoFiles(event)">
+            <button class="enroll-btn visitor-retake-btn" onclick="clearEnrollmentSamples()">Clear samples</button>
+          </div>
+        </div>
+        <div class="visitor-photo-hint" id="e-sample-count">0 face samples. Capture at least 3, turning your head slightly between shots.</div>
+        <button class="enroll-btn" id="enroll-start-btn" onclick="startEnrollment()">&#10003; Enroll and update recognition</button>
         <div class="enroll-status" id="enroll-status"></div>
       </div>
 
       <div class="enroll-card">
         <div class="enroll-title">Pose Guide</div>
-        <div class="enroll-sub">System automatically captures photos for each pose when a face is detected in Camera B.</div>
+        <div class="enroll-sub">Capture 3–8 photos with small changes in head angle and distance. Use good front lighting and keep only one face in the frame.</div>
         <div class="poses-grid" id="poses-grid">
-          <div class="pose-card" id="pose-0"><div class="pose-icon">&#128065;</div>Look Straight<br><small>3 photos</small></div>
-          <div class="pose-card" id="pose-1"><div class="pose-icon">&#8592;</div>Turn Left<br><small>2 photos</small></div>
-          <div class="pose-card" id="pose-2"><div class="pose-icon">&#8594;</div>Turn Right<br><small>2 photos</small></div>
-          <div class="pose-card" id="pose-3"><div class="pose-icon">&#128512;</div>Smile<br><small>2 photos</small></div>
-          <div class="pose-card" id="pose-4"><div class="pose-icon">&#8593;</div>Look Up<br><small>2 photos</small></div>
-          <div class="pose-card" id="pose-5"><div class="pose-icon">&#8595;</div>Look Down<br><small>2 photos</small></div>
-          <div class="pose-card" id="pose-6"><div class="pose-icon">&#128205;</div>Move Closer<br><small>2 photos</small></div>
-          <div class="pose-card" id="pose-7"><div class="pose-icon">&#128257;</div>Move Back<br><small>2 photos</small></div>
+          <div class="pose-card"><div class="pose-icon">&#128065;</div>Look straight</div>
+          <div class="pose-card"><div class="pose-icon">&#8592;</div>Turn slightly left</div>
+          <div class="pose-card"><div class="pose-icon">&#8594;</div>Turn slightly right</div>
+          <div class="pose-card"><div class="pose-icon">&#128205;</div>Change distance</div>
         </div>
       </div>
 
       <div class="enroll-card">
         <div class="enroll-title">&#128270; Rebuild Embeddings</div>
-        <div class="enroll-sub">After enrollment, rebuild embeddings to apply changes to the recognition system.</div>
+        <div class="enroll-sub">Recompute the face gallery from saved enrollment photos. New browser enrollments already update recognition automatically.</div>
         <button class="enroll-btn blue-btn" id="rebuild-btn" onclick="rebuildEmbeddings()">&#9881; Rebuild Embeddings</button>
         <div class="enroll-status" id="rebuild-status"></div>
       </div>
@@ -779,50 +964,61 @@ body::after{
         <div class="enroll-title">&#128100; Register Visitor</div>
         <div class="enroll-sub">Capture a photo and register a time-bound visitor. Access expires automatically.</div>
 
-        <div style="display:flex;gap:16px;margin-bottom:14px">
-          <video id="v-video" autoplay playsinline style="width:200px;height:150px;background:#000;border-radius:8px;border:1px solid var(--border2)"></video>
-          <canvas id="v-canvas" width="200" height="150" style="display:none"></canvas>
-          <img id="v-preview" style="width:200px;height:150px;object-fit:cover;border-radius:8px;border:1px solid var(--gold);display:none">
-          <div style="display:flex;flex-direction:column;gap:8px;justify-content:center">
-            <button class="enroll-btn" style="margin:0" onclick="startVisitorCamera()">&#128247; Start Camera</button>
-            <button class="enroll-btn blue-btn" style="margin:0" onclick="captureVisitorPhoto()">&#128248; Capture Photo</button>
-            <button class="enroll-btn" style="margin:0;background:var(--text-muted)" onclick="retakeVisitorPhoto()">&#8635; Retake</button>
+        <div class="visitor-capture">
+          <div class="visitor-preview-frame">
+            <video id="v-video" autoplay muted playsinline></video>
+            <canvas id="v-canvas" width="200" height="150" hidden></canvas>
+            <img id="v-preview" alt="Visitor photo preview" hidden>
+          </div>
+          <div class="visitor-capture-actions">
+            <label class="form-label" for="v-camera-source">Capture source</label>
+            <select class="form-input" id="v-camera-source" onchange="stopVisitorCamera()">
+              <option value="cam_a">Camera A (running engine)</option>
+              <option value="cam_b">Camera B (running engine)</option>
+              <option value="browser">Browser webcam (separate camera)</option>
+            </select>
+            <button class="enroll-btn" id="visitor-camera-start" style="margin:0" onclick="startVisitorCamera()">&#128247; Start Camera</button>
+            <button class="enroll-btn blue-btn" id="visitor-capture-btn" style="margin:0" onclick="captureVisitorPhoto()" disabled>&#128248; Capture Photo</button>
+            <label class="enroll-btn visitor-upload-btn" for="visitor-photo-file">&#128193; Upload Photo</label>
+            <input id="visitor-photo-file" type="file" accept="image/*" capture="user" hidden onchange="loadVisitorPhotoFile(event)">
+            <button class="enroll-btn visitor-retake-btn" id="visitor-retake-btn" style="margin:0" onclick="retakeVisitorPhoto()" disabled>&#8635; Retake</button>
           </div>
         </div>
+        <div class="visitor-photo-hint">Use the live camera or upload a clear, front-facing photo.</div>
 
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Visitor Name</label>
-            <input class="form-input" id="v-name" placeholder="John Doe">
+            <input class="form-input" id="v-name" placeholder="John Doe" maxlength="120" autocomplete="name" required>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Contact</label>
-            <input class="form-input" id="v-contact" placeholder="03001234567">
+            <input class="form-input" id="v-contact" placeholder="03001234567" maxlength="80" autocomplete="tel">
           </div>
         </div>
         <div class="form-row" style="margin-top:14px">
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Visiting (Host Name)</label>
-            <input class="form-input" id="v-host" placeholder="Dr. Khan">
+            <input class="form-input" id="v-host" placeholder="Dr. Khan" maxlength="120">
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Purpose</label>
-            <input class="form-input" id="v-purpose" placeholder="Meeting">
+            <input class="form-input" id="v-purpose" placeholder="Meeting" maxlength="240">
           </div>
         </div>
         <div class="form-group" style="margin-top:14px">
           <label class="form-label">Valid For (Hours)</label>
-          <input class="form-input" id="v-hours" type="number" value="4" min="1" max="24" style="max-width:120px">
+          <input class="form-input" id="v-hours" type="number" value="4" min="1" max="24" style="max-width:140px">
         </div>
 
         <button class="enroll-btn" id="visitor-register-btn" onclick="registerVisitor()">&#10003; Register Visitor</button>
-        <div class="enroll-status" id="visitor-status"></div>
+        <div class="enroll-status" id="visitor-status" role="status" aria-live="polite"></div>
       </div>
 
-      <div class="enroll-card" style="grid-column:span 2">
+      <div class="enroll-card visitor-list-card">
         <div class="enroll-title">&#128101; Active Visitors</div>
         <div class="enroll-sub">Currently checked-in visitors. Access expires automatically at the listed time.</div>
-        <div id="visitor-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        <div id="visitor-list" class="visitor-list">
           <div class="placeholder">Loading visitors...</div>
         </div>
       </div>
@@ -854,10 +1050,15 @@ body::after{
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/js/capture-camera.js"></script>
+<script src="/js/zone-editor.js"></script>
 <script>
 const CREDENTIALS = { admin: 'nigraan2026' };
 
 function showLanding(){
+  stopVisitorCamera();
+  stopEnrollmentCamera();
+  if(cameraHealthTimer){ clearInterval(cameraHealthTimer); cameraHealthTimer=null; }
   document.getElementById('page-landing').style.cssText='display:flex;flex-direction:column;';
   document.getElementById('page-login').style.display='none';
   document.getElementById('page-dashboard').style.display='none';
@@ -871,7 +1072,8 @@ function showDashboard(){
   document.getElementById('page-landing').style.display='none';
   document.getElementById('page-login').style.display='none';
   document.getElementById('page-dashboard').style.display='block';
-  initSocket(); loadStats(); loadRecent();
+  initSocket(); loadStats(); loadRecent(); loadCameraHealth(); loadBehaviorAlerts();
+  if(!cameraHealthTimer) cameraHealthTimer=setInterval(()=>{loadCameraHealth();loadBehaviorAlerts();},5000);
 }
 function scrollToFeatures(){ document.getElementById('features-section').scrollIntoView({behavior:'smooth'}); }
 
@@ -887,58 +1089,126 @@ function pad(n){ return String(n).padStart(2,'0') }
 function tick(){
   const d=new Date();
   document.getElementById('clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  const date=document.getElementById('dashboard-date');
+  if(date) date.textContent=d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
 }
 tick(); setInterval(tick,1000);
 
 function showDashTab(id,btn){
+  if(id!=='visitors') stopVisitorCamera();
+  if(id!=='enroll'&&typeof stopEnrollmentCamera==='function') stopEnrollmentCamera();
   document.querySelectorAll('.dash-page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('dash-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   if(id==='students') loadStudents();
   if(id==='visitors') loadVisitors();
+  if(id==='history') loadHistory();
+  if(id==='zones') loadCameraHealth();
+  if(id==='activity') loadBehaviorAlerts();
 }
 
 // ---- VISITOR MANAGEMENT ----
-let vStream = null;
+const vCamera = new CaptureCamera(document.getElementById('v-video'), document.getElementById('v-camera-source'));
 let vCapturedPhoto = null;
 
+function setVisitorStatus(message,type='info'){
+  const status=document.getElementById('visitor-status');
+  status.className='enroll-status '+type;
+  status.textContent=message;
+  status.style.display=message?'block':'none';
+}
+
+function stopVisitorCamera(){
+  vCamera.stop();
+  const video=document.getElementById('v-video');
+  if(video){ video.srcObject=null; }
+  const start=document.getElementById('visitor-camera-start');
+  const capture=document.getElementById('visitor-capture-btn');
+  if(start) start.disabled=false;
+  if(capture) capture.disabled=true;
+}
+
+function renderVisitorPhoto(source){
+  const canvas=document.getElementById('v-canvas');
+  const maxSide=640;
+  const scale=Math.min(1,maxSide/Math.max(source.videoWidth||source.naturalWidth||source.width,source.videoHeight||source.naturalHeight||source.height));
+  canvas.width=Math.max(1,Math.round((source.videoWidth||source.naturalWidth||source.width)*scale));
+  canvas.height=Math.max(1,Math.round((source.videoHeight||source.naturalHeight||source.height)*scale));
+  const context=canvas.getContext('2d',{alpha:false});
+  context.drawImage(source,0,0,canvas.width,canvas.height);
+  vCapturedPhoto=canvas.toDataURL('image/jpeg',0.86);
+  document.getElementById('v-preview').src=vCapturedPhoto;
+  document.getElementById('v-preview').hidden=false;
+  document.getElementById('v-video').hidden=true;
+  document.getElementById('visitor-retake-btn').disabled=false;
+}
+
 async function startVisitorCamera(){
+  stopEnrollmentCamera();
+  stopVisitorCamera();
+  document.getElementById('visitor-camera-start').disabled=true;
+  document.getElementById('v-preview').hidden=true;
   try {
-    vStream = await navigator.mediaDevices.getUserMedia({ video: { width: 200, height: 150 } });
-    document.getElementById('v-video').srcObject = vStream;
-  } catch (e) {
-    document.getElementById('visitor-status').innerHTML =
-      '<span style="color:var(--red)">Camera access denied: ' + e.message + '</span>';
-  }
+    const ready=await vCamera.start(error=>{
+      stopVisitorCamera();setVisitorStatus(error.message,'error');
+    });
+    if(!ready)return;
+    document.getElementById('visitor-capture-btn').disabled=false;
+    document.getElementById('visitor-retake-btn').disabled=true;
+    setVisitorStatus('Camera ready. Center the visitor’s face and capture a photo.','success');
+  } catch(error) { if(error.name==='AbortError')return;stopVisitorCamera();setVisitorStatus(error.message,'error'); }
 }
 
 function captureVisitorPhoto(){
-  const video  = document.getElementById('v-video');
-  const canvas = document.getElementById('v-canvas');
-  const preview = document.getElementById('v-preview');
-  if (!vStream) {
-    document.getElementById('visitor-status').innerHTML =
-      '<span style="color:var(--red)">Start the camera first.</span>';
+  try {
+    renderVisitorPhoto(vCamera.source());
+    stopVisitorCamera();
+    document.getElementById('v-preview').hidden=false;
+    document.getElementById('v-video').hidden=true;
+    setVisitorStatus('Photo captured. Check the preview, then register the visitor.','success');
+  } catch(error) { setVisitorStatus(error.message,'error'); }
+}
+
+async function loadVisitorPhotoFile(event){
+  const file=event.target.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    event.target.value='';
+    setVisitorStatus('Choose an image file for the visitor photo.','error');
     return;
   }
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  vCapturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
-
-  preview.src = vCapturedPhoto;
-  preview.style.display = 'block';
-  video.style.display = 'none';
-
-  document.getElementById('visitor-status').innerHTML =
-    '<span style="color:var(--green)">Photo captured.</span>';
+  if(file.size>15*1024*1024){
+    event.target.value='';
+    setVisitorStatus('Choose a photo smaller than 15 MB.','error');
+    return;
+  }
+  let sourceUrl;
+  try{
+    sourceUrl=URL.createObjectURL(file);
+    const image=new Image();
+    await new Promise((resolve,reject)=>{
+      image.onload=resolve;
+      image.onerror=()=>reject(new Error('This image could not be opened.'));
+      image.src=sourceUrl;
+    });
+    renderVisitorPhoto(image);
+    URL.revokeObjectURL(sourceUrl);
+    stopVisitorCamera();
+    setVisitorStatus('Photo ready. Check the preview, then register the visitor.','success');
+  }catch(e){ setVisitorStatus(e.message,'error'); }
+  finally{ if(sourceUrl) URL.revokeObjectURL(sourceUrl); }
 }
 
 function retakeVisitorPhoto(){
   vCapturedPhoto = null;
-  document.getElementById('v-preview').style.display = 'none';
-  document.getElementById('v-video').style.display = 'block';
-  document.getElementById('visitor-status').innerHTML = '';
+  document.getElementById('v-preview').removeAttribute('src');
+  document.getElementById('v-preview').hidden=true;
+  document.getElementById('v-video').hidden=false;
+  document.getElementById('visitor-photo-file').value='';
+  document.getElementById('visitor-retake-btn').disabled=true;
+  stopVisitorCamera();
+  setVisitorStatus('Capture a new photo or upload an image.','info');
 }
 
 async function registerVisitor(){
@@ -946,19 +1216,25 @@ async function registerVisitor(){
   const contact = document.getElementById('v-contact').value.trim();
   const host    = document.getElementById('v-host').value.trim();
   const purpose = document.getElementById('v-purpose').value.trim();
-  const hours   = document.getElementById('v-hours').value;
-  const statusEl = document.getElementById('visitor-status');
+  const hours   = Number(document.getElementById('v-hours').value);
+  const button=document.getElementById('visitor-register-btn');
 
   if (!name) {
-    statusEl.innerHTML = '<span style="color:var(--red)">Visitor name is required.</span>';
+    setVisitorStatus('Visitor name is required.','error');
     return;
   }
   if (!vCapturedPhoto) {
-    statusEl.innerHTML = '<span style="color:var(--red)">Capture a photo first.</span>';
+    setVisitorStatus('Capture or upload a visitor photo first.','error');
+    return;
+  }
+  if(!Number.isInteger(hours)||hours<1||hours>24){
+    setVisitorStatus('Choose a visit duration between 1 and 24 hours.','error');
     return;
   }
 
-  statusEl.innerHTML = '<span style="color:var(--gold)">Registering...</span>';
+  button.disabled=true;
+  button.textContent='Registering…';
+  setVisitorStatus('Saving visitor details and photo…','info');
 
   try {
     const res = await fetch('/api/visitors', {
@@ -973,61 +1249,87 @@ async function registerVisitor(){
         approved_by: 'admin',
       })
     });
-    const data = await res.json();
+    const data = await res.json().catch(()=>({success:false,error:'The server returned an unreadable response.'}));
 
-    if (data.success) {
-      statusEl.innerHTML = '<span style="color:var(--green)">Visitor ' + data.data.visitor_id + ' registered successfully.</span>';
+    if (!res.ok||!data.success) throw new Error(data.error||`Registration failed (${res.status}).`);
+    {
+      const visitorId=data.data?.visitor_id||'saved';
+      setVisitorStatus(`Visitor ${visitorId} registered successfully. The visit is active for ${hours} hour${hours===1?'':'s'}.`,'success');
       document.getElementById('v-name').value = '';
       document.getElementById('v-contact').value = '';
       document.getElementById('v-host').value = '';
       document.getElementById('v-purpose').value = '';
-      retakeVisitorPhoto();
-      loadVisitors();
-    } else {
-      statusEl.innerHTML = '<span style="color:var(--red)">' + (data.error || 'Registration failed') + '</span>';
+      document.getElementById('v-hours').value='4';
+      vCapturedPhoto=null;
+      document.getElementById('v-preview').removeAttribute('src');
+      document.getElementById('v-preview').hidden=true;
+      document.getElementById('v-video').hidden=false;
+      document.getElementById('visitor-photo-file').value='';
+      document.getElementById('visitor-retake-btn').disabled=true;
+      await loadVisitors();
     }
   } catch (e) {
-    statusEl.innerHTML = '<span style="color:var(--red)">' + e.message + '</span>';
+    setVisitorStatus(e.message,'error');
+  } finally {
+    button.disabled=false;
+    button.innerHTML='&#10003; Register Visitor';
   }
 }
 
 async function loadVisitors(){
   const listEl = document.getElementById('visitor-list');
+  listEl.setAttribute('aria-busy','true');
   try {
-    const res = await fetch('/api/visitors/active');
+    const res = await fetch('/api/visitors/active',{cache:'no-store'});
     const data = await res.json();
+    if(!res.ok||!data.success) throw new Error(data.error||'Could not load active visitors.');
 
-    if (!data.success || data.data.length === 0) {
-      listEl.innerHTML = '<div class="placeholder">No active visitors right now.</div>';
+    if (!data.data?.length) {
+      listEl.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'No active visitors right now.'}));
       return;
     }
 
-    listEl.innerHTML = data.data.map(v => {
-      const validUntil = new Date(v.valid_until).toLocaleTimeString();
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px">' +
-        '<div>' +
-          '<div style="font-weight:600;color:var(--text)">' + v.name + ' <span style="color:var(--text-muted);font-size:11px">(' + v.visitor_id + ')</span></div>' +
-          '<div style="font-size:11px;color:var(--text-dim)">Visiting: ' + (v.host_name || '-') + ' &middot; ' + (v.purpose || 'No purpose listed') + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted)">Valid until ' + validUntil + '</div>' +
-        '</div>' +
-        '<button class="clear-btn" onclick="checkoutVisitor(\'' + v.visitor_id + '\')">Check Out</button>' +
-      '</div>';
-    }).join('');
+    const fragment=document.createDocumentFragment();
+    data.data.forEach(visitor=>{
+      const row=document.createElement('article'); row.className='visitor-row';
+      const info=document.createElement('div');
+      const name=document.createElement('div'); name.className='visitor-name'; name.textContent=visitor.name||'Visitor';
+      const id=document.createElement('span'); id.className='visitor-meta'; id.textContent=` · ${visitor.visitor_id||''}`; name.appendChild(id);
+      const detail=document.createElement('div'); detail.className='visitor-meta'; detail.textContent=`Host: ${visitor.host_name||'—'} · ${visitor.purpose||'No purpose listed'}`;
+      const validity=document.createElement('div'); validity.className='visitor-validity';
+      validity.textContent=`Active until ${new Date(visitor.valid_until).toLocaleString()}`;
+      info.append(name,detail,validity);
+      const checkout=document.createElement('button'); checkout.className='clear-btn'; checkout.type='button'; checkout.textContent='Check Out';
+      checkout.addEventListener('click',()=>checkoutVisitor(visitor.visitor_id,checkout));
+      row.append(info,checkout); fragment.appendChild(row);
+    });
+    listEl.replaceChildren(fragment);
   } catch (e) {
-    listEl.innerHTML = '<div class="placeholder" style="color:var(--red)">Failed to load visitors.</div>';
+    listEl.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:`Failed to load visitors: ${e.message}`}));
+  } finally {
+    listEl.removeAttribute('aria-busy');
   }
 }
 
-async function checkoutVisitor(visitorId){
+async function checkoutVisitor(visitorId,button){
+  if(!visitorId) return;
+  button.disabled=true;
+  button.textContent='Checking out…';
   try {
-    await fetch('/api/visitors/' + visitorId + '/checkout', { method: 'POST' });
-    loadVisitors();
+    const res=await fetch('/api/visitors/'+encodeURIComponent(visitorId)+'/checkout',{method:'POST'});
+    const data=await res.json().catch(()=>({success:false,error:'The server returned an unreadable response.'}));
+    if(!res.ok||!data.success) throw new Error(data.error||'Checkout failed.');
+    await loadVisitors();
   } catch (e) {
-    console.error('Checkout failed:', e);
+    button.disabled=false;
+    button.textContent='Check Out';
+    setVisitorStatus(e.message,'error');
   }
 }
 
 let total=0,known=0,unknown=0,cross=0,alertCount=0,logCount=0;
+let cameraHealthTimer=null;
+const cameraStatuses={};
 function flash(id){ const el=document.getElementById(id); if(!el)return; el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),400); }
 function updateStats(){
   document.getElementById('stat-total').textContent=total;
@@ -1037,35 +1339,61 @@ function updateStats(){
   document.getElementById('alert-count').textContent=alertCount+' active';
   document.getElementById('log-count').textContent=logCount+' entries';
 }
+let liveEventVersion=0;
 function loadStats(){
+  const versionAtRequest=liveEventVersion;
   fetch('/api/detections/stats').then(r=>r.json()).then(d=>{
-    if(d.success&&d.data){ total=d.data.totalToday||0; known=d.data.knownToday||0; unknown=d.data.unknownToday||0; updateStats(); }
+    if(d.success&&d.data&&versionAtRequest===liveEventVersion){ total=d.data.totalToday||0; known=d.data.knownToday||0; unknown=d.data.unknownToday||0; updateStats(); }
   }).catch(()=>{});
 }
 
 const loggedIds=new Set();
-function addLog(d,prepend=true){
-  const uid=d.is_known?d.student_id:d.tracker_id;
-  if(uid&&loggedIds.has(uid)) return;
-  if(uid) loggedIds.add(uid);
+function eventKey(d){
+  if(d._id) return String(d._id);
+  return [d.timestamp||'',d.camera_id||'',d.event_type||'',d.local_tracker_id||d.tracker_id||'',d.global_person_id||d.student_id||''].join('|');
+}
+function addLog(d,isLive=true){
+  const key=eventKey(d);
+  if(loggedIds.has(key)) return false;
+  loggedIds.add(key);
+  if(loggedIds.size>2000) loggedIds.delete(loggedIds.values().next().value);
   const ph=document.getElementById('log-body').querySelector('.placeholder');
   if(ph) ph.remove();
   const t=new Date(d.timestamp||Date.now());
   const time=pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds());
-  const conf=d.is_known?Math.round((d.confidence||0)*100)+'%':'&mdash;';
+  const conf=d.is_known?Math.round((d.confidence||0)*100)+'%':'—';
   const el=document.createElement('div');
   el.className='log-item';
-  el.innerHTML=`<div class="log-dot ${d.is_known?'known':'unknown'}"></div>
-    <span class="log-name">${d.student_name||'Unknown'}</span>
-    <span class="log-cam">${d.camera_id||'&mdash;'}</span>
-    <span class="log-conf ${d.is_known?'high':'low'}">${conf}</span>
-    <span class="log-time">${time}</span>`;
+  el.dataset.timestamp=String(t.getTime());
+  el.dataset.eventId=String(d._id||key);
+  const dot=document.createElement('div');
+  dot.className=`log-dot ${d.is_known?'known':'unknown'}`;
+  el.appendChild(dot);
+  const addText=(className,value)=>{ const node=document.createElement('span'); node.className=className; node.textContent=value; el.appendChild(node); };
+  addText('log-name',d.student_name||d.person_name||'Unknown');
+  addText('log-cam',d.camera_id||'—');
+  const eventLabels={entered:'Entry',first_seen:'First seen',reidentified:'Reidentified',camera_transition:'Camera change',reappeared:'Reappeared'};
+  const eventType=String(d.event_type||'detected').toLowerCase();
+  addText('log-event',eventLabels[eventType]||eventType.replaceAll('_',' '));
+  addText(`log-conf ${d.is_known?'high':'low'}`,conf);
+  addText('log-time',time);
   const body=document.getElementById('log-body');
-  if(prepend) body.insertBefore(el,body.firstChild); else body.appendChild(el);
+  const eventId=String(d._id||key);
+  const before=Array.from(body.querySelectorAll('.log-item')).find(node=>{
+    const rowTime=Number(node.dataset.timestamp);
+    return rowTime<t.getTime()||(rowTime===t.getTime()&&node.dataset.eventId<eventId);
+  });
+  body.insertBefore(el,before||null);
   if(body.children.length>50) body.removeChild(body.lastChild);
-  logCount++;
-  if(d.is_known){ known++; flash('card-known'); } else { unknown++; flash('card-unknown'); }
-  flash('card-total'); updateStats();
+  logCount=body.querySelectorAll('.log-item').length;
+  if(isLive){
+    liveEventVersion++;
+    total++;
+    if(d.is_known){ known++; flash('card-known'); } else { unknown++; flash('card-unknown'); }
+    flash('card-total');
+  }
+  updateStats();
+  return true;
 }
 function clearLog(){
   document.getElementById('log-body').innerHTML='<div class="placeholder">Waiting for detections...</div>';
@@ -1093,6 +1421,184 @@ function addAlert(type,title,sub,gid=null){
   updateStats();
 }
 
+async function loadCameraHealth(){
+  const zoneRoot=document.getElementById('zone-summary');
+  try{
+    const response=await fetch('/api/cameras/health',{cache:'no-store'});
+    const payload=await response.json();
+    if(!response.ok||!payload.success) throw new Error(payload.error||'Camera health is unavailable.');
+    const cameras=payload.data||{};
+    Object.entries(cameras).forEach(([cameraId,camera])=>{
+      const badge=document.getElementById('cam-status-'+cameraId);
+      const fps=document.getElementById('cam-fps-'+cameraId);
+      const tracks=document.getElementById('cam-tracks-'+cameraId);
+      const online=camera.status==='online';
+      if(badge){ badge.textContent=online?'LIVE':'OFFLINE'; badge.classList.toggle('offline',!online); }
+      if(fps) {
+        const freshAnalysis=Number(camera.inference_age_seconds??Infinity)<2;
+        fps.textContent=online?`Preview: ${Number(camera.fps||0).toFixed(1)} · AI: ${freshAnalysis?Number(camera.processed_fps||0).toFixed(1):'waiting'} FPS`:'FPS: —';
+        fps.title=online?`Capture: ${Number(camera.capture_fps||0).toFixed(1)} FPS; inference: ${camera.inference_ms??'—'} ms; result age: ${camera.inference_age_seconds??'—'} s`:'';
+      }
+      if(tracks) tracks.textContent=`Tracks: ${online?Number(camera.active_tracks||0):'—'}`;
+      if(!online&&(cameraStatuses[cameraId]===true||cameraStatuses[cameraId]===undefined)){
+        const key='camera-offline:'+cameraId; addAlert('danger','Camera offline',`${cameraId} is not delivering fresh camera frames.`,key);
+      }
+      if(online) alertedIds.delete('camera-offline:'+cameraId);
+      cameraStatuses[cameraId]=online;
+    });
+    if(zoneRoot){
+      const zones=Object.entries(cameras).flatMap(([cameraId,camera])=>(camera.zones||[]).map(zone=>({cameraId,camera,zone})));
+      if(!zones.length){
+        const note=document.getElementById('zone-setup-note');if(note)note.hidden=false;
+        zoneRoot.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'No camera regions are configured yet. Add normalized camera ROIs in config.py to enable occupancy and dwell estimates.'}));
+      }else{
+        const note=document.getElementById('zone-setup-note');if(note)note.hidden=true;
+        const fragment=document.createDocumentFragment();
+        zones.forEach(({cameraId,camera,zone})=>{
+          const card=document.createElement('article');card.className='zone-card';
+          const title=document.createElement('div');title.className='zone-title';title.textContent=`${zone.name||zone.zone_id} · ${cameraId}`;
+          const values=document.createElement('div');values.className='zone-values';
+          [[zone.occupancy||0,'People in zone'],[`${Math.round(zone.average_dwell_seconds||0)}s`,'Average dwell']].forEach(([value,label])=>{
+            const cell=document.createElement('div');cell.className='zone-value';const strong=document.createElement('strong');strong.textContent=value;const caption=document.createElement('span');caption.textContent=label;cell.append(strong,caption);values.appendChild(cell);
+          });
+          const state=document.createElement('div');state.className='zone-state';state.textContent=camera.status==='online'?'Live estimate':'Camera offline — values may be stale';
+          card.append(title,values,state);fragment.appendChild(card);
+        });
+        zoneRoot.replaceChildren(fragment);
+      }
+    }
+  }catch(error){
+    ['cam_a','cam_b'].forEach(cameraId=>{
+      const badge=document.getElementById('cam-status-'+cameraId);if(badge){badge.textContent='OFFLINE';badge.classList.add('offline');}
+      const fps=document.getElementById('cam-fps-'+cameraId);if(fps)fps.textContent='FPS: —';
+      const tracks=document.getElementById('cam-tracks-'+cameraId);if(tracks)tracks.textContent='Tracks: —';
+    });
+    if(zoneRoot) zoneRoot.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'Camera health is unavailable. Start the Python camera engine to receive live status.'}));
+  }
+}
+
+let behaviorLoading=false;
+async function loadBehaviorAlerts(){
+  if(behaviorLoading)return;
+  behaviorLoading=true;
+  const root=document.getElementById('behavior-results');
+  try{
+    const response=await fetch('/api/cameras/behavior-alerts',{cache:'no-store'});
+    const payload=await response.json();
+    if(!response.ok||!payload.success) throw new Error(payload.error||'Activity cues are unavailable.');
+    const model=payload.model||{};const modelStatus=document.getElementById('violence-model-status');
+    const statusText={ready:'Violence model ready · review-only',loading:'Violence model loading…',weights_missing:'Violence model weights not installed. Run python download_violence_model.py.',disabled:'Violence model disabled in config.py',load_error:'Violence model could not load. Check Python console and checkpoint compatibility.',inference_error:'Violence model inference failed. Check Python console.'};
+    if(modelStatus){
+      const cameras=Object.entries(model.cameras||{}).map(([id,camera])=>
+        camera.last_inference_at
+          ? `${id}: score ${Number(camera.score).toFixed(2)}, ${camera.positive_windows}/${camera.required_positive_windows} positive windows, last checked ${new Date(camera.last_inference_at).toLocaleTimeString()}`
+          : `${id}: collecting frames ${camera.sampled_frames}/${camera.required_frames}`);
+      modelStatus.textContent=(statusText[model.state]||`Violence model status: ${model.state||'unknown'}`)+(model.error?` ${model.error}`:'')+(cameras.length?' · '+cameras.join(' · '):'');
+    }
+    const monitor=payload.monitor||{};
+    const weapons=payload.weapon_model||{};
+    const weaponStatus=document.getElementById('weapon-model-status');
+    if(weaponStatus){
+      const states={ready:'Gun/knife detector ready',loading:'Gun/knife detector loading',waiting_frames:'Gun/knife detector waiting for camera frames',weights_missing:'Gun/knife model is not installed',disabled:'Gun/knife detector disabled',load_error:'Gun/knife model could not load',inference_error:'Gun/knife inference failed'};
+      const readings=Object.entries(weapons.cameras||{}).map(([id,camera])=>`${id}: ${(camera.detections||[]).map(d=>`${d.weapon_type} ${Number(d.confidence).toFixed(2)}`).join(', ')||'no weapon cue'}${camera.last_inference_at?' · '+new Date(camera.last_inference_at).toLocaleTimeString():''}`);
+      weaponStatus.textContent=(states[weapons.state]||'Gun/knife model status unavailable')+(weapons.error?' · '+weapons.error:'')+(readings.length?' · '+readings.join(' · '):'');
+    }
+    const monitorStatus=document.getElementById('behavior-monitor-status');
+    if(monitorStatus)monitorStatus.textContent=monitor.enabled
+      ? `Motion monitoring enabled. Restricted-zone cameras: ${(monitor.restricted_zone_cameras||[]).join(', ')||'none configured; set BEHAVIOR_RESTRICTED_ZONES in config.py for entry and dwell cues'}.`
+      : 'Rule-based motion monitoring is disabled in config.py.';
+    const alerts=payload.data||[];document.getElementById('behavior-count').textContent=`${alerts.length} recent`;
+    if(!alerts.length){root.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'No review cues recorded. Check the model status above; restricted-zone cues also require configured regions.'}));return;}
+    const fragment=document.createDocumentFragment();
+    alerts.forEach(alert=>{
+      addAlert('danger','Activity review cue',`${alert.camera_id}: ${alert.description}`,`behavior:${alert.timestamp}:${alert.camera_id}:${alert.event_type}:${alert.weapon_type||alert.zone_id||''}`);
+      const row=document.createElement('article');row.className='history-row';
+      const main=document.createElement('div');main.className='history-main';
+      const title=document.createElement('div');title.className='history-person';title.textContent=`${String(alert.event_type||'activity').replaceAll('_',' ')} · ${historyText(alert.camera_id)}`;
+      const detail=document.createElement('div');detail.className='history-detail';detail.textContent=`${alert.timestamp?new Date(alert.timestamp).toLocaleString():'—'} · ${historyText(alert.description)} · Review footage`;
+      main.append(title,detail);row.appendChild(main);fragment.appendChild(row);
+    });
+    root.replaceChildren(fragment);
+  }catch(error){root.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:error.message}));}
+  finally{behaviorLoading=false;}
+}
+
+function eventLabel(eventType){
+  const labels={entered:'Entry',first_seen:'First seen',reidentified:'Reidentified',camera_transition:'Camera change',reappeared:'Reappeared'};
+  const key=String(eventType||'detected').toLowerCase();return labels[key]||key.replaceAll('_',' ');
+}
+function historyText(value){return value===undefined||value===null||value===''?'—':String(value)}
+function renderHistoryRows(events){
+  const root=document.getElementById('history-results');root.replaceChildren();
+  if(!events.length){root.appendChild(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'No matching events.'}));return;}
+  const fragment=document.createDocumentFragment();
+  events.forEach(item=>{
+    const row=document.createElement('article');row.className='history-row';
+    const main=document.createElement('div');main.className='history-main';
+    const person=document.createElement('div');person.className='history-person';person.textContent=historyText(item.person_name||item.student_name||item.global_person_id||item.person_id);
+    const detail=document.createElement('div');detail.className='history-detail';
+    const when=item.timestamp?new Date(item.timestamp).toLocaleString():'—';
+    detail.textContent=`${when} · ${historyText(item.camera_name||item.camera_id)} · ${eventLabel(item.event_type)} · ${item.is_known?'Known':'Unknown'}`;
+    main.append(person,detail);row.appendChild(main);
+    const identity=item.global_person_id||item.person_id||item.student_id;
+    if(identity){const button=document.createElement('button');button.type='button';button.textContent='View timeline';button.addEventListener('click',()=>loadTimeline(identity));row.appendChild(button);}
+    fragment.appendChild(row);
+  });
+  root.appendChild(fragment);
+}
+function historyQueryParams(limit){
+  const params=new URLSearchParams();
+  const q=document.getElementById('history-query').value.trim();if(q)params.set('q',q);
+  const camera=document.getElementById('history-camera').value;if(camera)params.set('camera',camera);
+  const eventType=document.getElementById('history-event').value;if(eventType)params.set('event',eventType);
+  const from=document.getElementById('history-from').value;if(from)params.set('from',new Date(from).toISOString());
+  const to=document.getElementById('history-to').value;if(to)params.set('to',new Date(to).toISOString());
+  params.set('limit',String(limit));return params;
+}
+async function loadHistory(event){
+  if(event) event.preventDefault();
+  const status=document.getElementById('history-status');status.textContent='Searching event history…';
+  try{
+    const response=await fetch('/api/detections/search?'+historyQueryParams(150).toString(),{cache:'no-store'});const data=await response.json();
+    if(!response.ok||!data.success)throw new Error(data.error||'Search failed.');
+    renderHistoryRows(data.data||[]);document.getElementById('history-count').textContent=`${data.count||0} events`;status.textContent='';
+  }catch(error){status.textContent=error.message;}
+}
+function csvCell(value){
+  let text=value==null?'':String(value);
+  if(/^[\s\u0000-\u001f]*[=+\-@]/.test(text))text="'"+text;
+  return '"'+text.replace(/"/g,'""')+'"';
+}
+async function exportHistory(){
+  const status=document.getElementById('history-status');status.textContent='Preparing CSV export…';
+  try{
+    const response=await fetch('/api/detections/search?'+historyQueryParams(300).toString(),{cache:'no-store'});const data=await response.json();
+    if(!response.ok||!data.success)throw new Error(data.error||'Export failed.');
+    const columns=[['Timestamp',item=>item.timestamp],['Identity',item=>item.global_person_id||item.person_id||item.student_id],['Name',item=>item.person_name||item.student_name],['Role',item=>item.role],['Camera',item=>item.camera_name||item.camera_id],['Event',item=>item.event_type],['Known',item=>item.is_known?'Yes':'No'],['Face confidence',item=>item.confidence],['ReID confidence',item=>item.reid_confidence],['Local track',item=>item.local_tracker_id||item.tracker_id],['Previous camera',item=>item.previous_camera]];
+    const rows=[columns.map(([name])=>csvCell(name)).join(','),...(data.data||[]).map(item=>columns.map(([,get])=>csvCell(get(item))).join(','))];
+    const blob=new Blob(['\ufeff'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');
+    link.href=url;link.download='incident-history-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    status.textContent=`Exported ${data.count||0} events${(data.count||0)>=300?' (maximum 300 rows)':''}.`;
+  }catch(error){status.textContent=error.message;}
+}
+async function loadTimeline(identity){
+  const root=document.getElementById('timeline-results');root.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'Loading timeline…'}));
+  document.getElementById('timeline-person').textContent=identity;
+  try{
+    const response=await fetch('/api/detections/timeline/'+encodeURIComponent(identity),{cache:'no-store'});const data=await response.json();
+    if(!response.ok||!data.success)throw new Error(data.error||'Could not load timeline.');
+    root.replaceChildren();
+    if(!data.data?.length){root.appendChild(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'No timeline events found.'}));return;}
+    const fragment=document.createDocumentFragment();
+    data.data.forEach(item=>{
+      const row=document.createElement('article');row.className='timeline-row';const main=document.createElement('div');main.className='history-main';
+      const title=document.createElement('div');title.className='history-person';title.textContent=`${historyText(item.camera_name||item.camera_id)} · ${eventLabel(item.event_type)}`;
+      const detail=document.createElement('div');detail.className='history-detail';detail.textContent=item.timestamp?new Date(item.timestamp).toLocaleString():'—';main.append(title,detail);row.appendChild(main);fragment.appendChild(row);
+    });root.appendChild(fragment);
+  }catch(error){root.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:error.message}));}
+}
+document.getElementById('history-form').addEventListener('submit',loadHistory);
+
 function resetAllLogs(){
   if(!confirm('Clear all detection logs and alerts?')) return;
   fetch('/api/detections/reset',{method:'DELETE'}).then(r=>r.json()).then(d=>{
@@ -1106,8 +1612,7 @@ function resetAllLogs(){
 function loadRecent(){
   fetch('/api/detections?limit=30').then(r=>r.json()).then(d=>{
     if(d.success&&d.data&&d.data.length){
-      document.getElementById('log-body').innerHTML=''; logCount=0;
-      d.data.slice().reverse().forEach(item=>addLog(item,false));
+      d.data.forEach(item=>addLog(item,false));
     }
   }).catch(()=>{});
 }
@@ -1116,10 +1621,12 @@ let socketInited=false;
 function initSocket(){
   if(socketInited) return; socketInited=true;
   const socket=io({transports:['websocket'],reconnection:true,reconnectionDelay:500});
-  socket.on('connect',()=>{ document.getElementById('conn-badge').textContent='Connected'; document.getElementById('conn-badge').className='conn-badge connected'; });
+  socket.on('connect',()=>{ document.getElementById('conn-badge').textContent='Connected'; document.getElementById('conn-badge').className='conn-badge connected'; loadRecent(); loadStats(); });
   socket.on('disconnect',()=>{ document.getElementById('conn-badge').textContent='Disconnected'; document.getElementById('conn-badge').className='conn-badge disconnected'; });
-  socket.on('new_detection',d=>{ addLog(d,true); if(!d.is_known){ addAlert('danger','Unknown person detected',`${d.student_name||'Unknown'} on ${d.camera_id} — ID: ${d.tracker_id||'—'}`,d.tracker_id); } });
+  socket.on('new_detection',d=>{ const added=addLog(d,true); if(added&&!d.is_known){ const gid=d.global_person_id||d.person_id||d.student_id||d.tracker_id; addAlert('danger','Unknown person detected',`${d.student_name||d.person_name||'Unknown'} on ${d.camera_id} — ID: ${gid||'—'}`,`${gid||''}:${d.camera_id||''}:${d.event_type||''}`); } });
   socket.on('cross_camera',d=>{ cross++; flash('card-cross'); updateStats(); addAlert('info','Cross-camera match',`${d.global_id} tracked on ${(d.cameras||[]).join(' → ')}`); });
+  socket.on('visitor_registered',()=>{ if(document.getElementById('dash-visitors').classList.contains('active')) loadVisitors(); });
+  socket.on('visitor_checked_out',()=>{ if(document.getElementById('dash-visitors').classList.contains('active')) loadVisitors(); });
   socket.on('reset',()=>{ clearLog(); document.getElementById('alert-body').innerHTML='<div class="placeholder">No alerts yet.</div>'; alertedIds.clear(); alertCount=0; cross=0; total=0; known=0; unknown=0; updateStats(); });
 }
 setInterval(loadStats,15000);
@@ -1128,64 +1635,150 @@ let editingId=null;
 function loadStudents(){
   fetch('/api/students').then(r=>r.json()).then(d=>{
     const grid=document.getElementById('students-grid');
-    if(!d.success||!d.data.length){ grid.innerHTML='<div class="placeholder">No students registered.</div>'; return; }
-    grid.innerHTML='';
+    if(!d.success||!Array.isArray(d.data)||!d.data.length){ grid.replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'No students registered.'})); return; }
+    const fragment=document.createDocumentFragment();
     d.data.forEach(s=>{
       const card=document.createElement('div');
       card.className='student-card';
-      card.innerHTML=`<div class="student-photo-wrap"><img src="/api/students/${s.student_id}/photo" onerror="this.parentElement.innerHTML='&#128100;'"></div>
-        <div class="student-info">
-          <div class="student-name">${s.name}</div>
-          <div class="student-id">${s.student_id}</div>
-          <div class="student-dept">${s.department||'—'}</div>
-          <div class="s-badge">Registered</div>
-          <div class="student-actions">
-            <button class="s-btn edit" onclick="openEditModal('${s.student_id}','${s.name}','${s.department||''}')">Edit</button>
-            <button class="s-btn del" onclick="deleteStudent('${s.student_id}')">Delete</button>
-          </div>
-        </div>`;
-      grid.appendChild(card);
+      const photoWrap=document.createElement('div');photoWrap.className='student-photo-wrap';
+      const photo=document.createElement('img');photo.alt='Photo of '+(s.name||'student');photo.src='/api/students/'+encodeURIComponent(s.student_id)+'/photo';
+      photo.addEventListener('error',()=>{photoWrap.replaceChildren(Object.assign(document.createElement('span'),{textContent:'👤','aria-label':'No photo'}));},{once:true});photoWrap.appendChild(photo);
+      const info=document.createElement('div');info.className='student-info';
+      const name=document.createElement('div');name.className='student-name';name.textContent=s.name||'';
+      const id=document.createElement('div');id.className='student-id';id.textContent=s.student_id||'';
+      const dept=document.createElement('div');dept.className='student-dept';dept.textContent=s.department||'—';
+      const badge=document.createElement('div');badge.className='s-badge';badge.textContent='Registered';
+      const actions=document.createElement('div');actions.className='student-actions';
+      const edit=document.createElement('button');edit.className='s-btn edit';edit.textContent='Edit';edit.addEventListener('click',()=>openEditModal(s.student_id||'',s.name||'',s.department||''));
+      const del=document.createElement('button');del.className='s-btn del';del.textContent='Delete';del.addEventListener('click',()=>deleteStudent(s.student_id,del));
+      actions.append(edit,del);info.append(name,id,dept,badge,actions);card.append(photoWrap,info);fragment.appendChild(card);
     });
-  }).catch(()=>{});
+    grid.replaceChildren(fragment);
+  }).catch(e=>{document.getElementById('students-grid').replaceChildren(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'Could not load students: '+e.message}));});
 }
 function openAddModal(){ editingId=null; document.getElementById('modal-title').textContent='Add Student'; document.getElementById('f-id').value=''; document.getElementById('f-name').value=''; document.getElementById('f-dept').value=''; document.getElementById('f-id').disabled=false; document.getElementById('modal').classList.add('open'); }
 function openEditModal(id,name,dept){ editingId=id; document.getElementById('modal-title').textContent='Edit Student'; document.getElementById('f-id').value=id; document.getElementById('f-name').value=name; document.getElementById('f-dept').value=dept; document.getElementById('f-id').disabled=true; document.getElementById('modal').classList.add('open'); }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
-function saveStudent(){
+async function saveStudent(){
   const id=document.getElementById('f-id').value.trim();
   const name=document.getElementById('f-name').value.trim();
   const dept=document.getElementById('f-dept').value.trim();
   if(!id||!name){ alert('Student ID and Name are required'); return; }
   const method=editingId?'PUT':'POST';
   const url=editingId?`/api/students/${editingId}`:'/api/students';
-  fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({student_id:id,name,department:dept})}).then(r=>r.json()).then(d=>{ if(d.success){ closeModal(); loadStudents(); } else alert('Error: '+d.error); }).catch(()=>{});
+  try{const response=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({student_id:id,name,department:dept})});const d=await response.json().catch(()=>({success:false,error:'Server response could not be read.'}));if(!response.ok||!d.success)throw new Error(d.error||'Could not save student.');closeModal();loadStudents();}
+  catch(e){alert('Error: '+e.message);}
 }
-function deleteStudent(id){
+async function deleteStudent(id,button){
   if(!confirm('Delete student '+id+'?')) return;
-  fetch(`/api/students/${id}`,{method:'DELETE'}).then(r=>r.json()).then(d=>{ if(d.success) loadStudents(); }).catch(()=>{});
+  if(button)button.disabled=true;
+  try{const response=await fetch('/api/students/'+encodeURIComponent(id),{method:'DELETE'});const d=await response.json().catch(()=>({success:false,error:'Server response could not be read.'}));if(!response.ok||!d.success)throw new Error(d.error||'Could not delete student.');loadStudents();}
+  catch(e){alert('Error: '+e.message);if(button)button.disabled=false;}
 }
 document.getElementById('modal').addEventListener('click',e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
 
-const POSES=['Look Straight','Turn Left','Turn Right','Smile','Look Up','Look Down','Move Closer','Move Back'];
 function setStatus(id,type,msg){ const el=document.getElementById(id); el.style.display='block'; el.className='enroll-status '+type; el.textContent=msg; }
-function startEnrollment(){
+const eCamera = new CaptureCamera(document.getElementById('e-video'), document.getElementById('e-camera-source'));
+const eSamples=[];
+function updateEnrollmentSampleCount(){
+  const el=document.getElementById('e-sample-count');
+  el.textContent=`${eSamples.length} face sample${eSamples.length===1?'':'s'}. ${eSamples.length>=3?'Ready to enroll.':'Capture at least 3, turning your head slightly between shots.'}`;
+}
+function stopEnrollmentCamera(){
+  eCamera.stop();
+  const video=document.getElementById('e-video');
+  if(video){video.srcObject=null;video.hidden=true;}
+  document.getElementById('e-preview').hidden=!eSamples.length;
+  document.getElementById('e-camera-start').disabled=false;
+  document.getElementById('e-capture').disabled=true;
+}
+async function startEnrollmentCamera(){
+  stopVisitorCamera();
+  stopEnrollmentCamera();
+  document.getElementById('e-camera-start').disabled=true;
+  document.getElementById('e-preview').hidden=true;
+  try {
+    const ready=await eCamera.start(error=>{
+      stopEnrollmentCamera();setStatus('enroll-status','error',error.message);
+    });
+    if(!ready)return;
+    document.getElementById('e-capture').disabled=false;
+    setStatus('enroll-status','success','Camera ready. Capture several slightly different face angles.');
+  } catch(error) {if(error.name==='AbortError')return;stopEnrollmentCamera();setStatus('enroll-status','error',error.message);}
+}
+function addEnrollmentSample(source){
+  if(eSamples.length>=8){setStatus('enroll-status','error','You can enroll up to 8 photos. Clear samples to start again.');return;}
+  const canvas=document.getElementById('e-canvas');
+  const width=source.videoWidth||source.naturalWidth||source.width;
+  const height=source.videoHeight||source.naturalHeight||source.height;
+  const scale=Math.min(1,640/Math.max(width,height));
+  canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+  canvas.getContext('2d',{alpha:false}).drawImage(source,0,0,canvas.width,canvas.height);
+  eSamples.push(canvas.toDataURL('image/jpeg',0.82));
+  const preview=document.getElementById('e-preview');preview.src=eSamples[eSamples.length-1];preview.hidden=eCamera.ready;
+  updateEnrollmentSampleCount();
+}
+function captureEnrollmentSample(){
+  try {
+    addEnrollmentSample(eCamera.source());
+    setStatus('enroll-status','info',`Captured sample ${eSamples.length}. Turn your face slightly, then capture another.`);
+  } catch(error) {setStatus('enroll-status','error',error.message);}
+}
+async function loadEnrollmentPhotoFiles(event){
+  const files=Array.from(event.target.files||[]);
+  if(!files.length)return;
+  for(const file of files){
+    if(!file.type.startsWith('image/')||file.size>10*1024*1024){setStatus('enroll-status','error','Choose image files smaller than 10 MB each.');continue;}
+    if(eSamples.length>=8)break;
+    const url=URL.createObjectURL(file);
+    try{const image=new Image();await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Could not open '+file.name));image.src=url;});addEnrollmentSample(image);}
+    catch(e){setStatus('enroll-status','error',e.message);}
+    finally{URL.revokeObjectURL(url);}
+  }
+  event.target.value='';
+  if(eSamples.length) setStatus('enroll-status','success','Photos ready. Review the last image and enroll when at least 3 samples are collected.');
+}
+function clearEnrollmentSamples(){
+  eSamples.length=0;document.getElementById('e-preview').removeAttribute('src');document.getElementById('e-preview').hidden=true;
+  updateEnrollmentSampleCount();setStatus('enroll-status','info','Samples cleared. Capture or upload at least 3 photos.');
+}
+async function startEnrollment(){
   const sid=document.getElementById('e-id').value.trim();
   const name=document.getElementById('e-name').value.trim();
   const dept=document.getElementById('e-dept').value.trim();
-  if(!sid||!name){ setStatus('enroll-status','error','Please enter Student ID and Name'); return; }
-  fetch('/api/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({student_id:sid,name,department:dept})}).then(r=>r.json()).then(d=>{
-    if(d.success||(d.error&&d.error.includes('duplicate'))){
-      setStatus('enroll-status','info',`Starting enrollment for ${name}. Open terminal and run: python enroll_from_cctv.py`);
-      POSES.forEach((_,i)=>{ setTimeout(()=>{ document.querySelectorAll('.pose-card').forEach(c=>c.classList.remove('active')); const el=document.getElementById('pose-'+i); if(el) el.classList.add('active'); },i*3000); });
-      setTimeout(()=>{ document.querySelectorAll('.pose-card').forEach(c=>{ c.classList.remove('active'); c.classList.add('done'); }); setStatus('enroll-status','success',`${name} enrolled! Now click Rebuild Embeddings to apply changes.`); },POSES.length*3000);
-    } else { setStatus('enroll-status','error','Error: '+d.error); }
-  }).catch(()=>{ setStatus('enroll-status','error','Cannot connect to server'); });
+  const button=document.getElementById('enroll-start-btn');
+  if(!sid||!name){setStatus('enroll-status','error','Please enter Student ID and Name.');return;}
+  if(!/^[A-Za-z0-9_-]{1,64}$/.test(sid)){setStatus('enroll-status','error','Student ID may contain letters, numbers, hyphens, or underscores.');return;}
+  if(eSamples.length<3){setStatus('enroll-status','error','Capture or upload at least 3 face photos first.');return;}
+  button.disabled=true;button.textContent='Enrolling…';
+  try{
+    let studentResponse=await fetch('/api/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({student_id:sid,name,department:dept})});
+    let studentData=await studentResponse.json().catch(()=>({success:false}));
+    if(!studentResponse.ok||!studentData.success){
+      const existingResponse=await fetch(`/api/students/${encodeURIComponent(sid)}`);
+      const existing=await existingResponse.json().catch(()=>({success:false}));
+      if(!existingResponse.ok||!existing.success)throw new Error(studentData.error||'Could not create the student record.');
+    }
+    setStatus('enroll-status','info','Saving photos and adding this person to live recognition…');
+    const response=await fetch(`/api/students/${encodeURIComponent(sid)}/enroll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images:eSamples})});
+    const data=await response.json().catch(()=>({success:false,error:'Server response could not be read.'}));
+    if(!response.ok||!data.success)throw new Error(data.error||`Enrollment failed (${response.status}).`);
+    document.getElementById('e-id').value='';document.getElementById('e-name').value='';
+    clearEnrollmentSamples();stopEnrollmentCamera();
+    setStatus('enroll-status','success',`${name} enrolled. The recognition gallery is live; an existing unknown track will be checked again on its next camera frames.`);
+  }catch(e){setStatus('enroll-status','error',e.message||'Enrollment failed.');}
+  finally{button.disabled=false;button.textContent='✓ Enroll and update recognition';}
 }
-function rebuildEmbeddings(){
-  const btn=document.getElementById('rebuild-btn');
-  btn.disabled=true; btn.textContent='Rebuilding...';
-  setStatus('rebuild-status','info','Rebuilding embeddings... Run: python train_arcface.py in terminal');
-  setTimeout(()=>{ btn.disabled=false; btn.textContent='Rebuild Embeddings'; setStatus('rebuild-status','success','Run python train_arcface.py then restart python multi_camera.py'); },2000);
+async function rebuildEmbeddings(){
+  const button=document.getElementById('rebuild-btn');button.disabled=true;button.textContent='Rebuilding…';
+  setStatus('rebuild-status','info','Recomputing embeddings from saved enrollment photos…');
+  try{
+    const response=await fetch('/api/students/rebuild-embeddings',{method:'POST'});
+    const data=await response.json().catch(()=>({success:false,error:'Server response could not be read.'}));
+    if(!response.ok||!data.success)throw new Error(data.error||data.data?.errors?.join('; ')||'Embedding rebuild failed.');
+    setStatus('rebuild-status',data.data?.errors?.length?'error':'success',data.message||'Recognition gallery rebuilt.');
+  }catch(e){setStatus('rebuild-status','error',e.message||'Embedding rebuild failed.');}
+  finally{button.disabled=false;button.textContent='⚙ Rebuild Embeddings';}
 }
 
 showLanding();

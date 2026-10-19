@@ -27,7 +27,17 @@ print("All models loaded.\n")
 # ── Thread 1: Camera reader ───────────────────────────────
 class CameraStream:
     def __init__(self, source):
-        self.cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
+        if isinstance(source, str) and source.lower().startswith(("rtsp://", "rtsps://")):
+            backend = cv2.CAP_FFMPEG
+        elif sys.platform == "win32":
+            backend = cv2.CAP_DSHOW
+        else:
+            backend = cv2.CAP_ANY
+
+        self.cap = cv2.VideoCapture(source, backend)
+        if not self.cap.isOpened():
+            self.cap.release()
+            self.cap = cv2.VideoCapture(source)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.FRAME_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
@@ -39,9 +49,14 @@ class CameraStream:
 
     def _reader(self):
         while self.running:
-            ret, frame = self.cap.read()
+            try:
+                ret, frame = self.cap.read()
+            except Exception:
+                ret, frame = False, None
+            if not ret or frame is None:
+                time.sleep(0.02)
             with self.lock:
-                self.ret   = ret
+                self.ret   = bool(ret and frame is not None)
                 self.frame = frame
 
     def read(self):
@@ -72,7 +87,10 @@ class RecognitionWorker:
 
             results = []
             for det in detections:
-                r = recognizer.recognize(det['face_crop'])
+                r = recognizer.recognize(
+                    det['face_crop'],
+                    tracker_id=det.get('tracker_id'),
+                )
                 r['bbox']       = det['bbox']
                 r['confidence'] = det['confidence']
                 r['tracker_id'] = None
@@ -153,6 +171,19 @@ def run_camera(cam_id, source):
             tracked    = tracker.update(detections, frame_rgb)
 
             if detections:
+                for det in detections:
+                    x1, y1, x2, y2 = det['bbox']
+                    center_x = (x1 + x2) // 2
+                    center_y = (y1 + y2) // 2
+                    det['tracker_id'] = next(
+                        (
+                            track['tracker_id']
+                            for track in tracked
+                            if track['bbox'][0] <= center_x <= track['bbox'][2]
+                            and track['bbox'][1] <= center_y <= track['bbox'][3]
+                        ),
+                        None,
+                    )
                 worker.submit(detections)
             else:
                 last_results = []

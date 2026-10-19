@@ -139,8 +139,13 @@ class FaceRecognizer:
         else:
             raw_pred = 'unknown'
 
+        # Voting must be tied to one tracker. Sharing a default vote buffer
+        # across untracked faces can combine evidence from different people.
+        if not tracker_id:
+            return unknown
+
         # majority voting with small window
-        key = tracker_id if tracker_id else 'default'
+        key = tracker_id
         if key not in self.vote_buffer:
             self.vote_buffer[key] = deque(maxlen=self.vote_size)
 

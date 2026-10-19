@@ -19,7 +19,7 @@ exports.getRecentDetections = async (req, res) => {
     );
 
     const detections = await Detection.find()
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: -1, _id: -1 })
       .limit(limit);
 
     res.json({
@@ -46,7 +46,7 @@ exports.getDetectionsByCamera = async (req, res) => {
     const detections = await Detection.find({
       camera_id: req.params.camId,
     })
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: -1, _id: -1 })
       .limit(100);
 
     res.json({
@@ -60,6 +60,69 @@ exports.getDetectionsByCamera = async (req, res) => {
       success: false,
       error: err.message,
     });
+  }
+};
+
+// Search the durable event history. All user-supplied text is escaped before
+// it is used as a regular expression, and result sizes are bounded.
+exports.searchDetections = async (req, res) => {
+  try {
+    const query = {};
+    const text = String(req.query.q || '').trim().slice(0, 100);
+    if (text) {
+      const safe = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(safe, 'i');
+      query.$or = [
+        { person_id: pattern },
+        { global_person_id: pattern },
+        { person_name: pattern },
+        { student_id: pattern },
+        { student_name: pattern },
+        { local_tracker_id: pattern },
+      ];
+    }
+    if (req.query.camera) query.camera_id = String(req.query.camera).slice(0, 40);
+    if (req.query.event) query.event_type = String(req.query.event).slice(0, 40);
+
+    const range = {};
+    if (req.query.from) {
+      const from = new Date(req.query.from);
+      if (Number.isNaN(from.getTime())) return res.status(400).json({ success: false, error: 'Invalid start date.' });
+      range.$gte = from;
+    }
+    if (req.query.to) {
+      const to = new Date(req.query.to);
+      if (Number.isNaN(to.getTime())) return res.status(400).json({ success: false, error: 'Invalid end date.' });
+      range.$lte = to;
+    }
+    if (range.$gte && range.$lte && range.$gte > range.$lte) {
+      return res.status(400).json({ success: false, error: 'Start date must be before end date.' });
+    }
+    if (Object.keys(range).length) query.timestamp = range;
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 300);
+    const data = await Detection.find(query).sort({ timestamp: -1, _id: -1 }).limit(limit).lean();
+    res.json({ success: true, count: data.length, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Return a person's camera-to-camera event sequence in chronological order.
+exports.getPersonTimeline = async (req, res) => {
+  try {
+    const identity = String(req.params.personId || '').trim().slice(0, 120);
+    if (!identity) return res.status(400).json({ success: false, error: 'A person ID is required.' });
+    const data = await Detection.find({
+      $or: [
+        { person_id: identity },
+        { global_person_id: identity },
+        { student_id: identity },
+      ],
+    }).sort({ timestamp: 1, _id: 1 }).limit(500).lean();
+    res.json({ success: true, count: data.length, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
@@ -130,6 +193,8 @@ exports.ingestDetection = async (req, res) => {
           global_person_id: globalPersonId,
 
           camera_id: body.camera_id,
+
+          local_tracker_id: localTrackerId,
 
           event_type: eventType,
 
@@ -234,6 +299,13 @@ exports.ingestDetection = async (req, res) => {
 
       });
 
+    // Emit as soon as the event is durable. The dashboard doesn't need to
+    // wait for the separate unknown-summary upsert below.
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_detection', detection);
+    }
+
 
     // ========================================================
     // UPDATE GLOBAL UNKNOWN RECORD
@@ -321,23 +393,6 @@ exports.ingestDetection = async (req, res) => {
         }
 
       );
-    }
-
-
-    // ========================================================
-    // SOCKET.IO LIVE DASHBOARD UPDATE
-    // ========================================================
-
-    const io =
-      req.app.get('io');
-
-    if (io) {
-
-      io.emit(
-        'new_detection',
-        detection
-      );
-
     }
 
 

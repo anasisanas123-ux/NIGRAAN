@@ -41,3 +41,7 @@ __pycache__/
 !.env.example
 
 data/embeddings_backup/
+data/deleted_enrollments/
+data/setup_cache/
+data/logs/
+face_evaluation.json

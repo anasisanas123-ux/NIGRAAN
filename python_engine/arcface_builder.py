@@ -84,8 +84,14 @@ def build_arcface_database():
         kept     = [arr[i] for i, s in enumerate(sims)
                     if s >= mean_sim * 0.85]
 
+        if len(kept) < 2:
+            kept = list(arr)
+
         avg  = np.mean(kept, axis=0)
         norm = np.linalg.norm(avg)
+        if norm == 0 or not np.isfinite(norm):
+            print(f"  Invalid average embedding for {name} — skipping")
+            continue
         avg  = avg / norm
 
         emb_path = os.path.join(config.EMBEDDINGS_DIR, f"{student_id}.npy")

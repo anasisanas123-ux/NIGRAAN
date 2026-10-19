@@ -3,6 +3,8 @@ const router = express.Router();
 const ctrl = require("../controllers/studentController");
 
 router.get("/", ctrl.getAllStudents);
+router.post("/rebuild-embeddings", ctrl.rebuildEmbeddings);
+router.post("/:id/enroll", ctrl.enrollStudent);
 router.get("/:id", ctrl.getStudent);
 router.get("/:id/photo", ctrl.getStudentPhoto);
 router.post("/", ctrl.createStudent);

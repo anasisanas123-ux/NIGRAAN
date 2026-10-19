@@ -1,0 +1,10 @@
+{
+  "source": "https://huggingface.co/cosgun99/gun-knife-yolo11n",
+  "revision": "572728c",
+  "classes": {
+    "0": "gun",
+    "1": "knife"
+  },
+  "checkpoint_sha256": "07241a8fc57d0f3fd29231dd72b9f452375745290b2185440de0165590997cb5",
+  "onnx_sha256": "6892cf491c9a70dbd2b95dc139c470f31fd5cebb426d83a57093515bc5a0702a"
+}

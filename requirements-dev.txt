@@ -1,0 +1,2 @@
+# Formatting is optional and separate from runtime/model dependencies.
+black==24.10.0

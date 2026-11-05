@@ -6,7 +6,12 @@ import requests
 import cv2
 import config
 from python_engine.camera_stream import CameraStream
-from python_engine.identity_cache import invalidate_inactive, needs_face_check
+from python_engine.identity_cache import (
+    invalidate_inactive,
+    is_rejected_weak_detection,
+    needs_face_check,
+    update_pending_hold,
+)
 from python_engine.gait_pose import GaitPoseExtractor
 from python_engine.gait_signature import GaitSignatureEngine
 from python_engine.runtime_helpers import post_detection, emb_valid
@@ -251,6 +256,12 @@ def camera_worker(cam_id, source, result_queue, context):
     # }
     recent_same_camera_identities = {}
     UNKNOWN_RECHECK = 0.8
+
+    # tracker_key -> time until an enrolled-face match under confirmation
+    # keeps the track out of unknown identity creation, gallery and logs.
+    pending_identity_holds = {}
+    # Matches the FaceEvidence window: a longer gap restarts confirmation.
+    IDENTITY_PENDING_HOLD = 2.0
 
     # ========================================================
     # CAMERA-LOCAL UNKNOWN IDENTITY LOCK
@@ -848,6 +859,13 @@ def camera_worker(cam_id, source, result_queue, context):
                         "face_embedding": fd.get("embedding"),
                         "body_crop": bd.get("body_crop"),
                         "tracker_id": tid,
+                        "identity_pending": update_pending_hold(
+                            pending_identity_holds,
+                            tracker_key,
+                            bool(fd.get("identity_pending")),
+                            now,
+                            IDENTITY_PENDING_HOLD,
+                        ),
                         "_cached": False,
                     }
                 )
@@ -871,6 +889,14 @@ def camera_worker(cam_id, source, result_queue, context):
                         "face_crop": None,
                         "body_crop": bd.get("body_crop"),
                         "tracker_id": tid,
+                        # No face this frame: an active hold still applies.
+                        "identity_pending": update_pending_hold(
+                            pending_identity_holds,
+                            tracker_key,
+                            None,
+                            now,
+                            IDENTITY_PENDING_HOLD,
+                        ),
                         "_cached": False,
                     }
                 )
@@ -947,6 +973,33 @@ def camera_worker(cam_id, source, result_queue, context):
                     "local_tracker_id": str(tid),
                     "global_id": prev["student_id"],
                     "cameras": [cam_id],
+                }
+
+            # =================================================
+            # ENROLLED FACE STILL BEING CONFIRMED
+            #
+            # Not known yet, but not a stranger either: skip unknown
+            # identity creation, anonymous gallery updates and logs.
+            # A track already holding an UNK keeps it for display.
+            # =================================================
+            elif det.get("identity_pending"):
+                cached_unk = confirmed_unknown_ids.get(tracker_key) or {}
+                if cached_unk:
+                    cached_unk["time"] = now
+                held_global_id = cached_unk.get("global_id")
+                rec = {
+                    "face_bbox": det.get("face_bbox"),
+                    "body_bbox": det.get("body_bbox"),
+                    "bbox": det.get("bbox"),
+                    "is_known": False,
+                    "student_id": None,
+                    "name": held_global_id or "Unknown",
+                    "confidence": 0.0,
+                    "reid_confidence": cached_unk.get("score", 0.0),
+                    "tracker_id": tid,
+                    "local_tracker_id": str(tid),
+                    "global_id": held_global_id,
+                    "cameras": cached_unk.get("cameras", [cam_id]),
                 }
 
             # =================================================
@@ -1346,14 +1399,14 @@ def camera_worker(cam_id, source, result_queue, context):
                                         if face_reid_margin is None
                                         else f"{face_reid_margin:.3f}"
                                     )
-                                print(
-                                    f"[ANON FACE NO MATCH] "
-                                    f"{tracker_key} "
-                                    f"best="
-                                    f"{face_reid_score:.3f} "
-                                    f"margin="
-                                    f"{margin_text}"
-                                )
+                                    print(
+                                        f"[ANON FACE NO MATCH] "
+                                        f"{tracker_key} "
+                                        f"best="
+                                        f"{face_reid_score:.3f} "
+                                        f"margin="
+                                        f"{margin_text}"
+                                    )
                         except Exception as e:
                             print(f"[ANON FACE ERROR] " f"{tracker_key}: " f"{e}")
                     if global_id is None and near_face_hold_active:
@@ -1485,6 +1538,20 @@ def camera_worker(cam_id, source, result_queue, context):
                     "confidence": 0.0,
                     "time": now,
                 }
+
+                # =============================================
+                # HIDE REJECTED WEAK DETECTIONS
+                #
+                # The detector runs at a low threshold so distant
+                # people keep their tracks. A track with no face, no
+                # identity and a body score below the new-identity
+                # gate was rejected above; do not publish it as a
+                # person box. Tracking state is unchanged.
+                # =============================================
+                if is_rejected_weak_detection(
+                    global_id, face_embedding, body_confidence, NEW_UNK_MIN_BODY_CONF
+                ):
+                    continue
 
                 # =============================================
                 # BUILD UNKNOWN RESULT

@@ -4,6 +4,35 @@ Run commands from this project folder. Existing `main.py` and `multi_camera.py`
 launch commands are preserved. Model weights, enrollment data and thresholds are
 unchanged by the performance refactor.
 
+## First-time setup
+
+Requires Python 3.11, Node.js, MongoDB running locally, and an NVIDIA GPU for
+real-time face recognition (it falls back to a much slower CPU path).
+
+```powershell
+py -3.11 -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+# insightface also installs the CPU-only onnxruntime, which overwrites the GPU
+# build in the same folder. Keep only the GPU build:
+.\venv\Scripts\python.exe -m pip uninstall -y onnxruntime onnxruntime-gpu
+.\venv\Scripts\python.exe -m pip install --no-deps onnxruntime-gpu==1.20.2
+cd dashboard; npm ci; cd ..
+```
+
+`pip check` then reports that insightface requires `onnxruntime`; the GPU build
+provides the same module, so this message is expected.
+
+Not in the repository (git-ignored) and needed before starting:
+
+- `models/osnet_x1_0_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth`
+  from the [Torchreid model zoo](https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO.html)
+  (MSMT17 `combineall=True`, osnet_x1_0).
+- `dashboard/.env` with `MONGODB_URI=mongodb://127.0.0.1:27017/nigraan`.
+- `.env` (optional) with `CAM_B_RTSP=` for a second camera and `SHOW_DESKTOP_WINDOWS=0`.
+
+YOLO and InsightFace weights download automatically on first start. Weapon and
+violence models are optional; see `docs/`.
+
 ## Start
 
 ```powershell
@@ -57,9 +86,9 @@ Unrelated folders have not been removed.
 - Face checks are limited to once every `FACE_INFERENCE_INTERVAL=0.2` seconds
   per camera; person tracking continues between those checks. Confirmation still
   requires three matching observations using distinct source frames.
-- USB cameras retain the original requested 25 FPS at the configured resolution.
-  `USB_CAMERA_MJPEG` is an optional capture mode with a fallback if it fails;
-  it remains disabled because it did not improve this laptop camera's output.
+- USB cameras request 25 FPS at the configured resolution. `USB_CAMERA_MJPEG`
+  is enabled because uncompressed YUY2 limits many USB webcams to 5-10 FPS at
+  720p/1080p; it falls back to the default format if MJPEG capture fails.
 - Preview delivery runs independently, up to `PREVIEW_FPS=20`, preserving aspect
   ratio. It does not lower the resolution used by the recognition models.
 - Stale person overlays disappear after `OVERLAY_MAX_AGE=1.0` seconds, or on a

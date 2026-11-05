@@ -13,7 +13,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
 from python_engine.arcface_recognizer import ArcFaceRecognizer
-from python_engine.identity_cache import invalidate_inactive, needs_face_check
+from python_engine.identity_cache import (
+    invalidate_inactive, is_rejected_weak_detection, needs_face_check, update_pending_hold)
 from python_engine.behavior_monitor import BehaviorMonitor
 from python_engine.violence_classifier import ViolenceClassifier
 from python_engine import engine_api
@@ -97,6 +98,28 @@ class IdentityTests(unittest.TestCase):
         self.assertFalse(needs_face_check(entry, 2, 10.5, .8))
         self.assertTrue(needs_face_check(entry, 2, 11., .8))
         self.assertEqual(entry['global_id'], 'UNK-001')
+
+    def test_pending_hold_covers_body_only_frames_until_it_expires(self):
+        holds = {}
+        self.assertFalse(update_pending_hold(holds, 'cam_a_1', None, 10., 2.))
+        self.assertTrue(update_pending_hold(holds, 'cam_a_1', True, 10., 2.))
+        self.assertTrue(update_pending_hold(holds, 'cam_a_1', None, 11.9, 2.))
+        self.assertFalse(update_pending_hold(holds, 'cam_a_2', None, 11.9, 2.))
+        self.assertFalse(update_pending_hold(holds, 'cam_a_1', None, 12., 2.))
+        self.assertEqual(holds, {})
+
+    def test_only_unidentified_faceless_weak_detections_are_hidden(self):
+        face = np.ones(4)
+        self.assertTrue(is_rejected_weak_detection(None, None, .30, .50))
+        self.assertFalse(is_rejected_weak_detection(None, None, .50, .50))
+        self.assertFalse(is_rejected_weak_detection(None, face, .30, .50))
+        self.assertFalse(is_rejected_weak_detection('UNK-001', None, .30, .50))
+
+    def test_pending_hold_ends_when_a_face_stops_matching(self):
+        holds = {}
+        update_pending_hold(holds, 'cam_a_1', True, 10., 2.)
+        self.assertFalse(update_pending_hold(holds, 'cam_a_1', False, 10.5, 2.))
+        self.assertFalse(update_pending_hold(holds, 'cam_a_1', None, 10.6, 2.))
 
 
     def test_live_camera_waits_for_three_matches_and_resets_after_gallery_change(self):

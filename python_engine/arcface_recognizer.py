@@ -23,21 +23,11 @@ from python_engine.face_quality import quality, assess_quality, FaceEvidence
 class ArcFaceRecognizer:
     def __init__(self):
         from insightface.app import FaceAnalysis
+        # TensorRT is not listed: when its libraries are missing, ONNX Runtime
+        # drops every GPU provider and silently runs these models on the CPU.
         self.app = FaceAnalysis(
             name='antelopev2',
-            providers=[
-                ('TensorrtExecutionProvider', {
-                    'trt_engine_cache_enable': True,
-                    'trt_engine_cache_path': os.path.join(
-                        os.path.dirname(os.path.dirname(
-                            os.path.abspath(__file__))),
-                        'trt_cache'
-                    ),
-                    'trt_fp16_enable': True,
-                }),
-                'CUDAExecutionProvider',
-                'CPUExecutionProvider'
-            ]
+            providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
         self.app.prepare(ctx_id=0, det_size=(1280, 1280))
         self.inference_lock = threading.RLock()

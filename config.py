@@ -212,16 +212,16 @@ MAX_IOU_DIST = 0.7
 
 FRAME_SKIP = 1
 CAPTURE_FPS = 25
-USB_CAMERA_MJPEG = False
+USB_CAMERA_MJPEG = True
 PREVIEW_FPS = 20
 PREVIEW_SIZE = (640, 480)
 PREVIEW_JPEG_QUALITY = 70
 OVERLAY_MAX_AGE = 1.0
 SHOW_DESKTOP_WINDOWS = os.getenv('SHOW_DESKTOP_WINDOWS', '1').lower() not in ('0', 'false', 'no')
 
-FRAME_WIDTH = 1280
+FRAME_WIDTH = 1920
 
-FRAME_HEIGHT = 720
+FRAME_HEIGHT = 1080
 
 
 # ============================================================

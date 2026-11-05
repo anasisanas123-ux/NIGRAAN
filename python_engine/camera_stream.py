@@ -32,11 +32,13 @@ class CameraStream:
                 cap = cv2.VideoCapture(self._source)
         try:
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            if isinstance(self._source, int) and self.prefer_mjpeg:
-                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
             cap.set(cv2.CAP_PROP_FPS, getattr(config, "CAPTURE_FPS", 25))
+            # Must come last: on DirectShow, setting the frame rate afterwards
+            # silently returns the camera to its uncompressed format.
+            if isinstance(self._source, int) and self.prefer_mjpeg:
+                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         except Exception:
             pass
         return cap

@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $projectPython = Join-Path $projectRoot 'venv\Scripts\python.exe'
-$wheel = Join-Path $projectRoot 'data\setup_cache\torch-2.4.1+cu118-cp311-cp311-win_amd64.whl'
+$wheel = Join-Path $projectRoot 'data\setup_cache\torch-2.4.1+cu121-cp311-cp311-win_amd64.whl'
 $installTargets = @('torch==2.4.1', 'torchvision==0.19.1')
 
 # Refuse an incomplete wheel before stopping the current engine.
@@ -9,7 +9,7 @@ if (Test-Path -LiteralPath $wheel) {
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $archive = [System.IO.Compression.ZipFile]::OpenRead($wheel)
   try {
-    if (-not ($archive.Entries | Where-Object { $_.FullName -eq 'torch-2.4.1+cu118.dist-info/METADATA' })) {
+    if (-not ($archive.Entries | Where-Object { $_.FullName -eq 'torch-2.4.1+cu121.dist-info/METADATA' })) {
         throw 'The downloaded wheel is not the expected PyTorch version.'
     }
   } finally { $archive.Dispose() }
@@ -34,7 +34,7 @@ if ($listener) {
 }
 
 Write-Output 'Installing pinned CUDA-enabled PyTorch and matching torchvision (downloads if not already installed).'
-& $projectPython -m pip install --no-cache-dir @installTargets --index-url 'https://download.pytorch.org/whl/cu118'
+& $projectPython -m pip install --no-cache-dir @installTargets --index-url 'https://download.pytorch.org/whl/cu121'
 if ($LASTEXITCODE -ne 0) { throw 'PyTorch installation failed. The engine has not been restarted.' }
 
 Write-Output 'Verifying the existing behavior checkpoint on a synthetic CPU clip.'

@@ -14,7 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
 from python_engine.arcface_recognizer import ArcFaceRecognizer
 from python_engine.identity_cache import (
-    invalidate_inactive, is_rejected_weak_detection, needs_face_check, update_pending_hold)
+    contested_track_keys, invalidate_inactive, is_rejected_weak_detection, needs_face_check,
+    update_pending_hold)
 from python_engine.behavior_monitor import BehaviorMonitor
 from python_engine.violence_classifier import ViolenceClassifier
 from python_engine import engine_api
@@ -107,6 +108,26 @@ class IdentityTests(unittest.TestCase):
         self.assertFalse(update_pending_hold(holds, 'cam_a_2', None, 11.9, 2.))
         self.assertFalse(update_pending_hold(holds, 'cam_a_1', None, 12., 2.))
         self.assertEqual(holds, {})
+
+    def test_person_passing_in_front_of_seated_person_contests_both_tracks(self):
+        boxes = {
+            'cam_b_1': [290, 160, 400, 360],   # standing person walking past
+            'cam_b_2': [250, 120, 330, 220],   # smaller seated person behind
+            'cam_b_3': [500, 50, 560, 200],    # someone elsewhere in the room
+        }
+        self.assertEqual(contested_track_keys(boxes, .25), {'cam_b_1', 'cam_b_2'})
+
+    def test_duplicate_tracks_with_the_same_name_do_not_contest_each_other(self):
+        boxes = {'cam_a_1': [100, 0, 400, 400], 'cam_a_16': [120, 20, 380, 400]}
+        same = {'cam_a_1': '1', 'cam_a_16': '1'}
+        self.assertEqual(contested_track_keys(boxes, .25, same), set())
+        different = {'cam_a_1': '1', 'cam_a_16': None}
+        self.assertEqual(contested_track_keys(boxes, .25, different), {'cam_a_1', 'cam_a_16'})
+
+    def test_slightly_touching_boxes_are_not_contested(self):
+        boxes = {'cam_a_1': [0, 0, 100, 200], 'cam_a_2': [95, 0, 195, 200]}
+        self.assertEqual(contested_track_keys(boxes, .25), set())
+        self.assertEqual(contested_track_keys({'cam_a_1': [0, 0, 10, 10]}, .25), set())
 
     def test_only_unidentified_faceless_weak_detections_are_hidden(self):
         face = np.ones(4)

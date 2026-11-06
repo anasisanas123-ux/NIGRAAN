@@ -7,6 +7,7 @@ import cv2
 import config
 from python_engine.camera_stream import CameraStream
 from python_engine.identity_cache import (
+    contested_track_keys,
     invalidate_inactive,
     is_rejected_weak_detection,
     needs_face_check,
@@ -262,6 +263,15 @@ def camera_worker(cam_id, source, result_queue, context):
     pending_identity_holds = {}
     # Matches the FaceEvidence window: a longer gap restarts confirmation.
     IDENTITY_PENDING_HOLD = 2.0
+
+    # Overlap (intersection over the smaller box) at which a named track may
+    # have been swapped with another person by the tracker.
+    CONTESTED_MIN_OVERLAP = 0.25
+    # A face match this recent keeps the name through an overlap.
+    KNOWN_FACE_FRESH_SECONDS = 1.0
+    # How long a released track waits for its face before it may be treated
+    # as a new unknown person.
+    CONTESTED_IDENTITY_HOLD = 5.0
 
     # ========================================================
     # CAMERA-LOCAL UNKNOWN IDENTITY LOCK
@@ -618,6 +628,52 @@ def camera_worker(cam_id, source, result_queue, context):
                     )
 
         # ====================================================
+        # RELEASE NAMES ON OVERLAPPING TRACKS
+        #
+        # When two people's boxes overlap, the tracker can swap
+        # their IDs, and a cached name would follow the wrong
+        # person. Drop a cached name unless this track's own face
+        # matched it very recently, and hold the track as
+        # "being confirmed" so it is neither named nor logged as
+        # a new unknown until a face is seen again.
+        # ====================================================
+        overlap_boxes = {}
+        overlap_identities = {}
+        for bd in body_dets:
+            if bd.get("tracker_id") is None or bd.get("bbox") is None:
+                continue
+            key = f"{cam_id}_{bd['tracker_id']}"
+            named = confirmed_ids.get(key)
+            if named is None and locked_ids.get(key, {}).get("is_known"):
+                named = locked_ids[key]
+            identity = named.get("student_id") if named else None
+            # Weak, unidentified boxes (a chair, a coat) are not treated as
+            # another person; only credible or identified tracks count.
+            if (
+                identity is None
+                and key not in confirmed_unknown_ids
+                and float(bd.get("confidence", 0.0) or 0.0) < NEW_UNK_MIN_BODY_CONF
+            ):
+                continue
+            overlap_boxes[key] = bd["bbox"]
+            overlap_identities[key] = identity
+        for tracker_key in contested_track_keys(
+            overlap_boxes, CONTESTED_MIN_OVERLAP, overlap_identities
+        ):
+            known = confirmed_ids.get(tracker_key)
+            if known is None and locked_ids.get(tracker_key, {}).get("is_known"):
+                known = locked_ids[tracker_key]
+            if known is None or now - known.get("face_time", 0.0) <= KNOWN_FACE_FRESH_SECONDS:
+                continue
+            confirmed_ids.pop(tracker_key, None)
+            locked_ids.pop(tracker_key, None)
+            pending_identity_holds[tracker_key] = now + CONTESTED_IDENTITY_HOLD
+            print(
+                f"[ID CONTESTED] {tracker_key} released "
+                f"{known.get('name')} after overlapping another person"
+            )
+
+        # ====================================================
         # BOT-SORT TRACK IDS COME DIRECTLY FROM BODY DETECTOR
         # ====================================================
 
@@ -859,6 +915,7 @@ def camera_worker(cam_id, source, result_queue, context):
                         "face_embedding": fd.get("embedding"),
                         "body_crop": bd.get("body_crop"),
                         "tracker_id": tid,
+                        "face_confirmed": bool(fd.get("is_known")),
                         "identity_pending": update_pending_hold(
                             pending_identity_holds,
                             tracker_key,
@@ -925,12 +982,15 @@ def camera_worker(cam_id, source, result_queue, context):
             if det["is_known"]:
                 pending_unknown_time.pop(tracker_key, None)
                 confirmed_unknown_ids.pop(tracker_key, None)
+                previous_face_time = confirmed_ids.get(tracker_key, {}).get("face_time", 0.0)
                 confirmed_ids[tracker_key] = {
                     "student_id": det["student_id"],
                     "name": det["name"],
                     "confidence": det["confidence"],
                     "role": det.get("role", "student"),
                     "gallery_version": recognizer.gallery_version,
+                    # Last time this track's face itself matched the name.
+                    "face_time": now if det.get("face_confirmed") else previous_face_time,
                 }
                 locked_ids[tracker_key] = {
                     "is_known": True,

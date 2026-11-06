@@ -4,7 +4,7 @@
   dialog.style.cssText = 'width:min(1000px,95vw);max-height:95vh;overflow:auto;background:#141d2b;color:#eee;border:1px solid #667;padding:20px';
   dialog.innerHTML = `<h2 id="zone-heading">Camera zones</h2>
     <p>Drag a rectangle on the camera image. Restricted zones create entry and dwell review alerts. A recognition zone limits face recognition and supplies occupancy metrics; leave it unset for the full image.</p>
-    <label>Zone type <select id="zone-kind"><option value="restricted">Restricted area</option><option value="recognition">Recognition / occupancy area</option></select></label>
+    <label>Zone type <select id="zone-kind"><option value="recognition">Recognition / occupancy area</option><option value="restricted">Restricted area</option></select></label>
     <label>Name <input id="zone-name" maxlength="100" value="Restricted area"></label>
     <label>Dwell seconds <input id="zone-dwell" type="number" min="0" max="86400" value="10"></label>
     <div><canvas id="zone-canvas" style="width:100%;height:auto;touch-action:none;cursor:crosshair"></canvas></div>

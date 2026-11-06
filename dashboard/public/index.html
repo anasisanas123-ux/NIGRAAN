@@ -1711,7 +1711,9 @@ function addEnrollmentSample(source){
   const canvas=document.getElementById('e-canvas');
   const width=source.videoWidth||source.naturalWidth||source.width;
   const height=source.videoHeight||source.naturalHeight||source.height;
-  const scale=Math.min(1,640/Math.max(width,height));
+  // Keep full 1080p detail: shrinking CCTV frames to 640 px made faces too
+  // small for the 80 px enrollment minimum. Webcam frames are already smaller.
+  const scale=Math.min(1,1920/Math.max(width,height));
   canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
   canvas.getContext('2d',{alpha:false}).drawImage(source,0,0,canvas.width,canvas.height);
   eSamples.push(canvas.toDataURL('image/jpeg',0.82));

@@ -4,31 +4,53 @@ Run commands from this project folder. Existing `main.py` and `multi_camera.py`
 launch commands are preserved. Model weights, enrollment data and thresholds are
 unchanged by the performance refactor.
 
-## First-time setup
+## First-time setup (new PC)
 
-Requires Python 3.11, Node.js, MongoDB running locally, and an NVIDIA GPU for
-real-time face recognition (it falls back to a much slower CPU path).
+Install first:
+
+- **Python 3.11** (python.org; newer versions do not work with the pinned packages)
+- **Node.js 20 LTS** or newer
+- **MongoDB Community Server**, installed as a Windows service
+- **NVIDIA GPU driver** for real-time face recognition (without a GPU it runs on
+  the CPU, much more slowly). No separate CUDA install is needed.
+
+Then, from the project folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+```
+
+The script creates `venv`, installs the Python packages (about 3 GB), downloads
+and verifies the person Re-ID model into `models/`, creates `.env` and
+`dashboard/.env` from the `.env.example` files, installs the dashboard packages
+and runs the tests. It is safe to run again.
+
+After setup:
+
+1. Optional second camera: put its RTSP address in `.env` (examples inside).
+   Camera A is the PC webcam, device `0` in `config.py`; change it if your
+   webcam is a different device (for example when OBS Virtual Camera is installed).
+2. Start the project (below), open the dashboard and enroll your face on the
+   **Enroll** page. Face data and photos are never stored in the repository.
+
+<details><summary>Manual setup (what the script does)</summary>
 
 ```powershell
 py -3.11 -m venv venv
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.env\Scripts\python.exe -m pip install -r requirements.txt
 # insightface also installs the CPU-only onnxruntime, which overwrites the GPU
 # build in the same folder. Keep only the GPU build:
-.\venv\Scripts\python.exe -m pip uninstall -y onnxruntime onnxruntime-gpu
-.\venv\Scripts\python.exe -m pip install --no-deps onnxruntime-gpu==1.20.2
+.env\Scripts\python.exe -m pip uninstall -y onnxruntime onnxruntime-gpu
+.env\Scripts\python.exe -m pip install --no-deps onnxruntime-gpu==1.20.2
+.env\Scripts\python.exe scripts\download_models.py
+copy .env.example .env
+copy dashboard\.env.example dashboard\.env
 cd dashboard; npm ci; cd ..
 ```
 
 `pip check` then reports that insightface requires `onnxruntime`; the GPU build
 provides the same module, so this message is expected.
-
-Not in the repository (git-ignored) and needed before starting:
-
-- `models/osnet_x1_0_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth`
-  from the [Torchreid model zoo](https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO.html)
-  (MSMT17 `combineall=True`, osnet_x1_0).
-- `dashboard/.env` with `MONGODB_URI=mongodb://127.0.0.1:27017/nigraan`.
-- `.env` (optional) with `CAM_B_RTSP=` for a second camera and `SHOW_DESKTOP_WINDOWS=0`.
+</details>
 
 YOLO and InsightFace weights download automatically on first start. Weapon and
 violence models are optional; see `docs/`.

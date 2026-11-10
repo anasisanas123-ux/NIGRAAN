@@ -17,6 +17,10 @@ from python_engine.violence_classifier import create_default_classifier
 from python_engine.weapon_detector import create_default_weapon_detector
 from python_engine.zone_store import ZoneStore
 from python_engine.frame_buffer import RollingRate
+from python_engine.presence_log import PresenceLog
+from python_engine.visitor_watchlist import create_default_watchlist
+from python_engine.recorder import create_default_recorder
+from python_engine.exam_monitor import create_default_exam_monitor
 
 
 app = Flask(__name__)
@@ -37,6 +41,11 @@ violence_classifier = create_default_classifier(config)
 weapon_detector = create_default_weapon_detector(config)
 identity_recognizer = None
 zone_store = ZoneStore(config)
+# Add-ons. They read frames/results only and never change recognition.
+presence_log = PresenceLog(getattr(config, "SIGHTING_INTERVAL_SECONDS", 30))
+visitor_watchlist = create_default_watchlist(config)
+recorder = create_default_recorder(config)
+exam_monitor = create_default_exam_monitor(config)
 
 
 @app.route("/zones/<cam_id>", methods=["GET", "PUT"])
@@ -130,10 +139,123 @@ def remove_identity(identity_id):
     if identity_recognizer is None:
         return {"success": False, "error": "Recognition engine is not ready."}, 503
     try:
+        _watch_visitor_before_removal(identity_id, request.args.get("reason", "checked out"))
+    except Exception:
+        app.logger.exception("Could not add visitor to the watch list")
+    try:
         return {"success": True, "data": identity_recognizer.remove_identity(identity_id)}
     except Exception as error:
         app.logger.exception("Identity removal failed")
         return {"success": False, "error": f"Could not remove identity: {error}"}, 500
+
+
+def _watch_visitor_before_removal(identity_id, reason):
+    """Keep a removed visitor's face so the watch list can spot them later.
+
+    Expired visitors are not loaded into the live gallery after a restart, so
+    fall back to the embedding file and roles.json that are still on disk.
+    """
+    import json
+
+    identity_id = str(identity_id)
+    role = identity_recognizer.known_roles.get(identity_id)
+    name = identity_recognizer.known_names.get(identity_id)
+    embeddings = identity_recognizer.known_embeddings.get(identity_id)
+    if role is None or embeddings is None:
+        try:
+            with open(os.path.join(config.EMBEDDINGS_DIR, "roles.json"), "r", encoding="utf-8") as handle:
+                role = (json.load(handle).get(identity_id) or {}).get("role", role)
+        except (OSError, ValueError):
+            pass
+        path = os.path.join(config.EMBEDDINGS_DIR, f"{identity_id}.npy")
+        if embeddings is None and os.path.isfile(path):
+            embeddings = np.load(path, allow_pickle=False)
+    if role != "visitor" or embeddings is None:
+        return
+    reason = "expired" if str(reason).lower() == "expired" else "checked out"
+    visitor_watchlist.add(identity_id, name or identity_id, np.asarray(embeddings), reason=reason)
+
+
+@app.route("/sightings")
+def sightings():
+    try:
+        after = int(request.args.get("after", 0))
+    except ValueError:
+        after = 0
+    return {"success": True, "data": presence_log.since(after)}
+
+
+def _local_only():
+    if not _is_local_request():
+        return {"success": False, "error": "Available through the local dashboard only."}, 403
+    return None
+
+
+@app.route("/recordings/status")
+def recording_status():
+    return {"success": True, "data": recorder.status()}
+
+
+@app.route("/recordings/<cam_id>/<action>", methods=["POST"])
+def recording_control(cam_id, action):
+    denied = _local_only()
+    if denied:
+        return denied
+    if cam_id not in config.CAMERA_SOURCES:
+        return {"success": False, "error": "Unknown camera."}, 404
+    try:
+        if action == "start":
+            body = request.get_json(silent=True) or {}
+            return {"success": True, "data": recorder.start(cam_id, body.get("label", ""))}
+        if action == "stop":
+            return {"success": True, "data": recorder.stop(cam_id)}
+    except ValueError as error:
+        return {"success": False, "error": str(error)}, 400
+    return {"success": False, "error": "Unknown action."}, 404
+
+
+@app.route("/exam/status")
+def exam_status():
+    return {"success": True, "data": exam_monitor.status()}
+
+
+@app.route("/exam/<cam_id>/<action>", methods=["POST"])
+def exam_control(cam_id, action):
+    denied = _local_only()
+    if denied:
+        return denied
+    if cam_id not in config.CAMERA_SOURCES:
+        return {"success": False, "error": "Unknown camera."}, 404
+    try:
+        if action == "start":
+            body = request.get_json(silent=True) or {}
+            return {"success": True, "data": exam_monitor.start(cam_id, body.get("name", ""))}
+        if action == "stop":
+            result = exam_monitor.stop(cam_id)
+            if result is None:
+                return {"success": False, "error": "No exam is running on this camera."}, 404
+            return {"success": True, "data": result}
+        if action == "relearn":
+            result = exam_monitor.relearn_seats(cam_id)
+            if result is None:
+                return {"success": False, "error": "No exam is running on this camera."}, 404
+            return {"success": True, "data": result}
+    except ValueError as error:
+        return {"success": False, "error": str(error)}, 400
+    return {"success": False, "error": "Unknown action."}, 404
+
+
+@app.route("/exam/reports")
+def exam_reports():
+    return {"success": True, "data": exam_monitor.reports()}
+
+
+@app.route("/exam/reports/<session_id>")
+def exam_report(session_id):
+    report = exam_monitor.report(session_id)
+    if report is None:
+        return {"success": False, "error": "Exam report not found."}, 404
+    return {"success": True, "data": report}
 
 
 @app.route("/rebuild-embeddings", methods=["POST"])
@@ -156,6 +278,15 @@ def rebuild_embeddings():
 def update_analysis(cam_id, detections, source_shape, telemetry=None):
     """Only new, processed frames drive activity/occupancy decisions."""
     now = time.time()
+    for addon in (
+        lambda: presence_log.record(cam_id, detections),
+        lambda: visitor_watchlist.check(cam_id, detections),
+        lambda: exam_monitor.observe_identities(cam_id, detections, source_shape),
+    ):
+        try:
+            addon()
+        except Exception as error:  # an add-on must never stop recognition
+            print(f"[ADD-ON ERROR] {cam_id}: {type(error).__name__}: {error}")
     if getattr(config, "BEHAVIOR_MONITOR_ENABLED", True):
         behavior_monitor.update(
             cam_id,
@@ -410,6 +541,7 @@ def behavior_alerts():
     """Return recent, non-identifying review cues and model readiness."""
     alerts = (
         behavior_monitor.snapshot() + violence_classifier.snapshot() + weapon_detector.snapshot()
+        + visitor_watchlist.snapshot() + exam_monitor.snapshot()
     )
     alerts.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
     return {
@@ -417,6 +549,8 @@ def behavior_alerts():
         "alerts": alerts[:200],
         "violence_model": violence_classifier.status(),
         "weapon_model": weapon_detector.status(),
+        "exam": {"state": exam_monitor.status()["state"], "error": exam_monitor.status()["error"]},
+        "visitor_watchlist": visitor_watchlist.status(),
         "monitor": {
             "enabled": bool(getattr(config, "BEHAVIOR_MONITOR_ENABLED", True)),
             "restricted_zone_cameras": [

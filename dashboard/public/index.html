@@ -265,6 +265,18 @@ body::after{
   font-family:'Orbitron',monospace;letter-spacing:.5px;
 }
 .reset-btn:hover{background:var(--red-dim);border-color:var(--red)}
+.sound-btn{
+  font-size:10px;color:var(--green);background:none;
+  border:1px solid rgba(57,224,122,.3);padding:4px 10px;cursor:pointer;transition:.15s;
+  font-family:'Orbitron',monospace;letter-spacing:.5px;white-space:nowrap;
+}
+.sound-btn.off{color:var(--text-dim);border-color:var(--gold-border)}
+.alert-toast{
+  position:fixed;right:16px;bottom:16px;z-index:9999;max-width:min(360px,calc(100vw - 32px));
+  background:var(--panel);border:1px solid var(--red);border-left-width:4px;color:var(--text);
+  padding:12px 14px;font-size:12px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;
+}
+.alert-toast strong{display:block;color:var(--red);font-size:13px;margin-bottom:2px}
 .logout-btn{
   font-size:10px;color:var(--text-dim);background:none;
   border:1px solid var(--border);padding:4px 10px;cursor:pointer;transition:.15s;
@@ -504,6 +516,71 @@ body::after{
 .zone-state{margin-top:10px;color:var(--text-muted);font-size:10px}.zone-setup-note{margin-top:16px;max-width:760px;color:var(--text-muted);font-size:11px;line-height:1.6}
 .zone-setup-note code{color:var(--gold-dim)}
 
+/* ---- Attendance, recordings/search, exam mode ---- */
+.x-section{margin-bottom:14px;border-radius:10px}
+.x-pad{padding:14px 16px}
+.x-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.x-stack{display:grid;gap:14px;margin-bottom:14px}
+.x-list{display:grid;gap:8px}
+.x-card{padding:14px;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;min-width:0}
+.x-card.clickable{cursor:pointer}.x-card.clickable:hover{border-color:rgba(245,197,24,.4)}
+.x-card h3{font:600 13px 'Inter',sans-serif;color:var(--text);margin:0 0 4px;overflow-wrap:anywhere}
+.x-meta{font-size:11px;color:var(--text-dim);line-height:1.6;overflow-wrap:anywhere}
+.x-counts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.x-badge{display:inline-block;padding:3px 8px;border-radius:999px;font:600 10px 'Inter',sans-serif;border:1px solid var(--border2);color:var(--text-dim);white-space:nowrap}
+.x-badge.present,.x-badge.ok{color:var(--green);border-color:rgba(57,224,122,.35);background:var(--green-dim)}
+.x-badge.late,.x-badge.warn{color:var(--gold);border-color:var(--gold-border);background:var(--gold-glow)}
+.x-badge.absent,.x-badge.bad{color:var(--red);border-color:rgba(255,69,69,.35);background:var(--red-dim)}
+.x-badge.excused,.x-badge.info{color:var(--blue);border-color:rgba(77,184,255,.35);background:var(--blue-dim)}
+.x-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:10px}
+.x-toolbar label{display:grid;gap:6px;color:var(--text-dim);font-size:10px;min-width:0}
+.x-toolbar input:not([type=checkbox]):not([type=file]),.x-toolbar select{height:38px;padding:0 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font:12px 'Inter',sans-serif;min-width:0}
+.x-toolbar .add-btn{height:38px;margin:0;white-space:nowrap}
+.x-toolbar .x-grow{flex:1 1 240px}.x-toolbar .x-grow input{width:100%}
+.x-file-btn{display:inline-flex!important;align-items:center;gap:6px;cursor:pointer}
+.x-check{display:flex!important;align-items:center;gap:6px;height:38px;font-size:11px!important}
+.x-note{color:var(--text-muted);font-size:11px;line-height:1.6;margin:0 0 8px;max-width:900px}
+.x-table-wrap{overflow-x:auto;border:1px solid var(--border2);border-radius:8px}
+.x-table{width:100%;border-collapse:collapse;font-size:12px;min-width:620px}
+.x-table th{text-align:left;font:600 9px 'Orbitron',monospace;letter-spacing:1px;color:var(--gold);padding:10px;border-bottom:1px solid var(--border2);background:var(--bg3)}
+.x-table td{padding:9px 10px;border-bottom:1px solid var(--border2);color:var(--text);vertical-align:middle}
+.x-table tr:last-child td{border-bottom:none}
+.x-table select{height:30px;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:11px}
+.x-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid var(--border2);border-radius:8px;background:rgba(255,255,255,.018)}
+.x-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.x-btn{border:1px solid var(--border2);border-radius:5px;padding:6px 9px;background:transparent;color:var(--gold);cursor:pointer;font-size:10px;white-space:nowrap}
+.x-btn:hover{background:var(--gold-glow)}.x-btn:disabled{opacity:.4;cursor:not-allowed}
+.x-btn.danger{color:var(--red);border-color:rgba(255,69,69,.3)}.x-btn.danger:hover{background:var(--red-dim)}
+.x-btn.primary{color:#000;background:var(--gold);border-color:var(--gold)}
+.x-progress{position:relative;height:18px;border-radius:5px;background:var(--bg3);border:1px solid var(--border2);overflow:hidden;margin-bottom:10px}
+.x-progress div{height:100%;width:0;background:linear-gradient(90deg,var(--gold-dim),var(--gold));transition:width .2s}
+.x-progress span{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;color:var(--text)}
+.x-mini-bar{height:4px;border-radius:3px;background:var(--bg);margin-top:6px;overflow:hidden}.x-mini-bar div{height:100%;background:var(--gold)}
+.x-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.x-result{background:var(--bg3);border:1px solid var(--border2);border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.x-result:hover{border-color:var(--gold)}
+.x-result img{width:100%;aspect-ratio:1/1.3;object-fit:cover;background:#000;display:block}
+.x-result div{padding:8px 10px;font-size:11px;color:var(--text-dim);line-height:1.5;overflow-wrap:anywhere}
+.x-result strong{color:var(--text);font-weight:600}
+.x-days{display:flex;flex-wrap:wrap;gap:6px}
+.x-days label{display:flex;align-items:center;gap:4px;padding:6px 9px;border:1px solid var(--border2);border-radius:6px;font-size:11px;color:var(--text-dim);cursor:pointer}
+.x-checklist{max-height:220px;overflow:auto;border:1px solid var(--border2);border-radius:7px;margin-top:8px;padding:6px}
+.x-checklist label{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:12px;color:var(--text);cursor:pointer;border-radius:5px}
+.x-checklist label:hover{background:var(--gold-glow)}
+.x-modal{width:min(640px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto}
+.x-media-modal{width:min(980px,calc(100vw - 32px))}
+.x-media-modal video,.x-media-modal img{width:100%;max-height:70vh;background:#000;border-radius:8px;display:block}
+.x-media-modal video[hidden],.x-media-modal img[hidden]{display:none}
+.x-events{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:12px}
+.x-event{background:var(--bg);border:1px solid var(--border2);border-radius:8px;overflow:hidden;cursor:pointer}
+.x-event:hover{border-color:var(--red)}
+.x-event img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:#000}
+.x-event div{padding:8px 10px;font-size:11px;color:var(--text-dim);line-height:1.5}
+.x-event strong{color:var(--red)}
+.rec-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);margin-right:6px;animation:recblink 1s steps(2) infinite}
+@keyframes recblink{50%{opacity:.2}}
+@media print{.nav,.dashboard-heading button,.x-toolbar,.x-actions,#exam-active,.alert-toast{display:none!important}}
+
 @media(max-width:1080px){
   .nav{height:auto;min-height:56px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
   .nav-tabs{order:3;width:100%;overflow-x:auto;justify-content:center}
@@ -532,6 +609,10 @@ body::after{
   .visitor-row{align-items:flex-start;padding:12px;gap:10px}
   .log-item{gap:6px;padding:9px 10px}
   .log-event{max-width:68px}
+  .x-pad{padding:12px}
+  .x-toolbar > *{flex:1 1 140px}
+  .x-row{grid-template-columns:auto minmax(0,1fr)}.x-row .x-actions{grid-column:1/-1;justify-content:flex-start}
+  .x-results{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 }
 @media(max-width:420px){
   .nav-right .reset-btn{display:none}
@@ -739,11 +820,15 @@ body::after{
       <button class="nav-tab" onclick="showDashTab('history',this)">&#128203; History</button>
       <button class="nav-tab" onclick="showDashTab('zones',this)">&#9638; Zones</button>
       <button class="nav-tab" onclick="showDashTab('activity',this)">&#9888; Activity Review</button>
+      <button class="nav-tab" onclick="showDashTab('attendance',this)">&#10003; Attendance</button>
+      <button class="nav-tab" onclick="showDashTab('recordings',this)">&#9210; Recordings</button>
+      <button class="nav-tab" onclick="showDashTab('exam',this)">&#9998; Exam</button>
     </div>
     <div class="nav-right">
       <span class="live-badge">&#9679; Live</span>
       <span id="clock">--:--:--</span>
       <span id="conn-badge" class="conn-badge disconnected">Connecting...</span>
+      <button id="sound-toggle" class="sound-btn" type="button" onclick="toggleAlertSound()" title="Play a sound when an activity alert fires">&#128276; Sound on</button>
       <button class="reset-btn" onclick="resetAllLogs()">&#128465; Reset</button>
       <button class="logout-btn" onclick="showLanding()">Logout</button>
     </div>
@@ -877,8 +962,136 @@ body::after{
     </div>
     <p id="behavior-monitor-status" class="history-status" role="status"></p>
     <p id="violence-model-status" class="history-status" role="status">Checking violence model…</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+      <p id="notification-status" class="history-status" role="status" style="flex:1;min-width:220px">Checking notifications&hellip;</p>
+      <button class="clear-btn" type="button" id="notification-test-btn" onclick="sendTestNotification()">Send test notification</button>
+    </div>
     <p id="weapon-model-status" class="history-status" role="status">Checking gun/knife detector…</p>
     <section class="panel history-panel"><div class="panel-hdr">Recent cues <span id="behavior-count" class="muted-count"></span></div><div id="behavior-results" class="history-results"><div class="placeholder">Loading activity cues…</div></div></section>
+  </div>
+
+  <!-- ATTENDANCE TAB -->
+  <div id="dash-attendance" class="dash-page">
+    <div class="dashboard-heading">
+      <div><div class="dashboard-eyebrow">Academics / Attendance</div><h1 class="dashboard-title">Class attendance</h1><p class="dashboard-description">Students recognised on the class camera are marked present or late automatically. Staff can correct any entry.</p></div>
+      <button class="add-btn" type="button" onclick="openClassModal()">+ New class</button>
+    </div>
+    <section class="panel x-section"><div class="panel-hdr">Today <span id="att-today-date" class="muted-count"></span></div><div id="att-today" class="x-grid x-pad"><div class="placeholder">Loading&hellip;</div></div></section>
+    <section class="panel x-section">
+      <div class="panel-hdr">Attendance sheet</div>
+      <div class="x-pad">
+        <form class="x-toolbar" onsubmit="event.preventDefault();loadAttendanceReport()">
+          <label>Class<select id="att-class"></select></label>
+          <label>Date<input id="att-date" type="date"></label>
+          <button class="add-btn" type="submit">Show</button>
+          <button class="history-export-btn" type="button" onclick="exportAttendance()">Export CSV</button>
+          <button class="history-export-btn" type="button" onclick="editSelectedClass()">Edit class</button>
+        </form>
+        <p id="att-status" class="history-status" role="status"></p>
+        <div id="att-report"><div class="placeholder">Create a class, then choose it here.</div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- RECORDINGS + APPEARANCE SEARCH TAB -->
+  <div id="dash-recordings" class="dash-page">
+    <div class="dashboard-heading">
+      <div><div class="dashboard-eyebrow">Investigation / Video</div><h1 class="dashboard-title">Recordings &amp; appearance search</h1><p class="dashboard-description">Record a camera when you need to, upload other footage, then search it by clothing, appearance or a photo of the person.</p></div>
+      <button class="clear-btn" type="button" onclick="loadRecordingsTab()">Refresh</button>
+    </div>
+    <section class="panel x-section"><div class="panel-hdr">Record a camera</div><div id="rec-cameras" class="x-grid x-pad"><div class="placeholder">Loading&hellip;</div></div></section>
+    <section class="panel x-section">
+      <div class="panel-hdr">Videos <span id="rec-count" class="muted-count"></span></div>
+      <div class="x-pad">
+        <div class="x-toolbar">
+          <label class="history-export-btn x-file-btn">&#8679; Upload a video<input id="rec-upload" type="file" accept="video/*,.mkv,.avi" hidden onchange="uploadVideo(this.files[0]);this.value=''"></label>
+          <button class="history-export-btn" type="button" onclick="indexSelectedVideos()">Prepare selected for search</button>
+          <label class="x-check"><input type="checkbox" id="rec-select-all" onchange="document.querySelectorAll('.rec-pick').forEach(c=>c.checked=this.checked)"> Select all</label>
+        </div>
+        <div id="rec-upload-progress" class="x-progress" hidden><div></div><span></span></div>
+        <div id="rec-list" class="x-list"><div class="placeholder">Loading&hellip;</div></div>
+      </div>
+    </section>
+    <section class="panel x-section">
+      <div class="panel-hdr">Search people in the selected videos</div>
+      <div class="x-pad">
+        <form class="x-toolbar x-search-form" onsubmit="event.preventDefault();runAppearanceSearch()">
+          <label class="x-grow">Description<input id="srch-text" type="search" maxlength="200" placeholder="e.g. red hoodie, white shirt and black pants, glasses, backpack"></label>
+          <label>Top colour<select id="srch-upper"></select></label>
+          <label>Bottom colour<select id="srch-lower"></select></label>
+          <label class="history-export-btn x-file-btn" title="Find a person from a photo (face and clothing)">&#128247; <span id="srch-photo-name">Photo</span><input id="srch-photo" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="pickSearchPhoto(this.files[0])"></label>
+          <button class="add-btn" type="submit">Search</button>
+        </form>
+        <p class="x-note">Searches only videos that are ticked above and prepared for search. A photo is matched by face (same model as live recognition) and by overall look. Text search understands clothing and appearance but is not perfect; colour words are also checked against the detected clothing colour.</p>
+        <p id="srch-status" class="history-status" role="status"></p>
+        <div id="srch-results" class="x-results"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- EXAM MODE TAB -->
+  <div id="dash-exam" class="dash-page">
+    <div class="dashboard-heading">
+      <div><div class="dashboard-eyebrow">Academics / Examinations</div><h1 class="dashboard-title">Exam mode</h1><p class="dashboard-description">Flags a visible phone, students looking around, leaving their seat, or sitting too close. Cues are prompts for the invigilator, not proof of cheating.</p></div>
+      <button class="clear-btn" type="button" onclick="loadExamTab()">Refresh</button>
+    </div>
+    <section class="panel x-section">
+      <div class="panel-hdr">Start an exam session</div>
+      <div class="x-pad">
+        <form class="x-toolbar" onsubmit="event.preventDefault();startExam()">
+          <label class="x-grow">Exam name<input id="exam-name" maxlength="100" placeholder="e.g. Data Structures midterm, Room 4"></label>
+          <label>Camera<select id="exam-camera"></select></label>
+          <button class="add-btn" type="submit">Start exam</button>
+        </form>
+        <p class="x-note">When the session starts, students should already be seated: the first 15 seconds are used to learn where the seats are. Use &ldquo;Re-learn seats&rdquo; if students were still moving. Snapshots of each cue are saved with the report.</p>
+        <p id="exam-status" class="history-status" role="status"></p>
+      </div>
+    </section>
+    <div id="exam-active" class="x-stack"></div>
+    <section class="panel x-section"><div class="panel-hdr">Past exam reports</div><div id="exam-reports" class="x-list x-pad"><div class="placeholder">Loading&hellip;</div></div></section>
+  </div>
+
+  <!-- CLASS EDITOR -->
+  <div class="modal-overlay" id="class-modal">
+    <div class="modal x-modal">
+      <div class="modal-title" id="class-modal-title">New class</div>
+      <form id="class-form" onsubmit="event.preventDefault();saveClass()">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Class name</label><input class="form-input" id="cls-name" maxlength="100" required placeholder="e.g. AI Lab - Section B"></div>
+          <div class="form-group"><label class="form-label">Classroom camera</label><select class="form-input" id="cls-camera"></select></div>
+        </div>
+        <div class="form-group"><label class="form-label">Days</label><div class="x-days" id="cls-days"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Starts</label><input class="form-input" id="cls-start" type="time" required value="09:00"></div>
+          <div class="form-group"><label class="form-label">Ends</label><input class="form-input" id="cls-end" type="time" required value="10:30"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Late after (minutes)</label><input class="form-input" id="cls-late" type="number" min="0" max="240" value="10"></div>
+          <div class="form-group"><label class="form-label">Counts from (minutes before start)</label><input class="form-input" id="cls-early" type="number" min="0" max="120" value="15"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Students <span id="cls-count"></span></label>
+          <input class="form-input" id="cls-filter" placeholder="Filter by name or ID" oninput="filterClassStudents()">
+          <div id="cls-students" class="x-checklist"></div>
+        </div>
+        <p id="cls-error" class="history-status" role="alert"></p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn cancel" id="cls-delete" onclick="deleteClass()" hidden>Delete class</button>
+          <button type="button" class="modal-btn cancel" onclick="closeClassModal()">Cancel</button>
+          <button type="submit" class="modal-btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- VIDEO / SNAPSHOT VIEWER -->
+  <div class="modal-overlay" id="media-modal" onclick="if(event.target===this)closeMediaModal()">
+    <div class="modal x-modal x-media-modal">
+      <div class="modal-title" id="media-title"></div>
+      <video id="media-video" controls preload="metadata" hidden></video>
+      <img id="media-image" alt="" hidden>
+      <p id="media-note" class="x-note"></p>
+      <div class="modal-actions"><button type="button" class="modal-btn cancel" onclick="closeMediaModal()">Close</button></div>
+    </div>
   </div>
 
   <!-- STUDENTS TAB -->
@@ -1105,7 +1318,10 @@ function showDashTab(id,btn){
   if(id==='visitors') loadVisitors();
   if(id==='history') loadHistory();
   if(id==='zones') loadCameraHealth();
-  if(id==='activity') loadBehaviorAlerts();
+  if(id==='activity'){ loadBehaviorAlerts(); loadNotificationStatus(); }
+  if(id==='attendance') loadAttendanceTab();
+  if(id==='recordings') loadRecordingsTab();
+  if(id==='exam') loadExamTab();
 }
 
 // ---- VISITOR MANAGEMENT ----
@@ -1617,14 +1833,480 @@ function loadRecent(){
   }).catch(()=>{});
 }
 
+// ---- Alert notifications (sound, pop-up, desktop notification) ----
+function escHtml(value){
+  return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+let alertSoundOn=true;
+try{ alertSoundOn=localStorage.getItem('nigraan-alert-sound')!=='off'; }catch(_){}
+let alertAudio=null;
+function unlockAlertAudio(){
+  // Browsers only allow sound after the user has clicked somewhere on the page.
+  try{
+    if(!alertAudio) alertAudio=new (window.AudioContext||window.webkitAudioContext)();
+    if(alertAudio.state==='suspended') alertAudio.resume();
+  }catch(_){}
+}
+function renderSoundToggle(){
+  const btn=document.getElementById('sound-toggle');
+  if(!btn) return;
+  btn.innerHTML=alertSoundOn?'&#128276; Sound on':'&#128277; Sound off';
+  btn.classList.toggle('off',!alertSoundOn);
+}
+function toggleAlertSound(){
+  alertSoundOn=!alertSoundOn;
+  try{ localStorage.setItem('nigraan-alert-sound',alertSoundOn?'on':'off'); }catch(_){}
+  renderSoundToggle();
+  if(alertSoundOn){ unlockAlertAudio(); playAlertSound(false); }
+  if(alertSoundOn&&'Notification' in window&&Notification.permission==='default') Notification.requestPermission().catch(()=>{});
+}
+function playAlertSound(urgent){
+  if(!alertSoundOn) return;
+  unlockAlertAudio();
+  if(!alertAudio||alertAudio.state!=='running') return;
+  // Urgent (weapon/violence): rising-falling siren for ~1.6 s. Otherwise two short beeps.
+  const start=alertAudio.currentTime;
+  const osc=alertAudio.createOscillator(), gain=alertAudio.createGain();
+  osc.type=urgent?'sawtooth':'sine';
+  osc.connect(gain); gain.connect(alertAudio.destination);
+  gain.gain.setValueAtTime(0.0001,start);
+  if(urgent){
+    for(let i=0;i<4;i++){
+      osc.frequency.setValueAtTime(700,start+i*0.4);
+      osc.frequency.linearRampToValueAtTime(1100,start+i*0.4+0.2);
+      osc.frequency.linearRampToValueAtTime(700,start+i*0.4+0.4);
+    }
+    gain.gain.exponentialRampToValueAtTime(0.18,start+0.03);
+    gain.gain.setValueAtTime(0.18,start+1.5);
+    gain.gain.exponentialRampToValueAtTime(0.0001,start+1.6);
+    osc.start(start); osc.stop(start+1.65);
+  }else{
+    osc.frequency.setValueAtTime(880,start);
+    [0,0.25].forEach(t=>{
+      gain.gain.setValueAtTime(0.0001,start+t);
+      gain.gain.exponentialRampToValueAtTime(0.2,start+t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,start+t+0.18);
+    });
+    osc.start(start); osc.stop(start+0.5);
+  }
+}
+let alertToastTimer=null;
+function showAlertToast(title,text){
+  let toast=document.getElementById('alert-toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='alert-toast'; toast.className='alert-toast'; toast.setAttribute('role','alert');
+    toast.title='Open Activity Review';
+    toast.onclick=()=>{ toast.remove(); showDashTab('activity',[...document.querySelectorAll('.nav-tab')].find(t=>t.textContent.includes('Activity'))); };
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML=`<strong>&#9888; ${escHtml(title)}</strong>${escHtml(text)}`;
+  clearTimeout(alertToastTimer);
+  alertToastTimer=setTimeout(()=>{ const t=document.getElementById('alert-toast'); if(t) t.remove(); },10000);
+}
+function handleBehaviorAlert(a){
+  const urgent=a.event_type==='possible_weapon'||a.event_type==='possible_violent_activity'||a.event_type==='test_alert';
+  const title=a.title||'Activity alert';
+  const where=a.camera_id==='test'?'Test':(a.camera||a.camera_id||'Camera');
+  addAlert('danger',escHtml(title),escHtml(`${where}: ${a.description||''}`));
+  showAlertToast(`${title} - ${where}`,a.description||'');
+  if(a.sound) playAlertSound(urgent);
+  if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){
+    try{ new Notification(`NIGRAAN: ${title}`,{body:`${where}: ${a.description||''}`,tag:'nigraan-alert'}); }catch(_){}
+  }
+  if(document.getElementById('dash-activity').classList.contains('active')) loadBehaviorAlerts();
+  if(String(a.event_type).startsWith('exam_')&&isActiveTab('exam')) refreshExamActive();
+}
+async function loadNotificationStatus(){
+  const el=document.getElementById('notification-status');
+  if(!el) return;
+  try{
+    const r=await fetch('/api/notifications/status',{cache:'no-store'});
+    const p=await r.json();
+    if(!r.ok||!p.success) throw new Error();
+    const d=p.data;
+    const part=(name,c)=>c.configured
+      ?`${name} on (${c.recipients} recipient${c.recipients===1?'':'s'})${c.last_error?` - last error: ${c.last_error}`:''}`
+      :`${name} off (not set up in dashboard/.env)`;
+    el.textContent=`Notifications: sound ${alertSoundOn?'on':'off'} in this browser · ${part('email',d.email)} · ${part('SMS',d.sms)}`;
+  }catch(_){ el.textContent='Notifications: status unavailable. Restart the dashboard server.'; }
+}
+async function sendTestNotification(){
+  const btn=document.getElementById('notification-test-btn');
+  btn.disabled=true;
+  unlockAlertAudio();
+  try{
+    const r=await fetch('/api/notifications/test',{method:'POST'});
+    const p=await r.json();
+    if(!r.ok||!p.success) throw new Error(p.error||'Test failed.');
+    const s=p.data.sent, st=p.data.status;
+    const out=[];
+    if(st.email.configured) out.push(s.email?'email sent':'email FAILED');
+    if(st.sms.configured) out.push(s.sms?'SMS sent':'SMS FAILED');
+    showAlertToast('Test notification',out.length?out.join(', '):'Sound only (email and SMS are not set up).');
+  }catch(e){ showAlertToast('Test notification',e.message); }
+  finally{ btn.disabled=false; loadNotificationStatus(); }
+}
+
+// ==== Shared helpers for the add-on tabs ====
+async function api(url,options={}){
+  const opts={...options};
+  if(opts.body&&typeof opts.body!=='string'&&!(opts.body instanceof Blob)){opts.body=JSON.stringify(opts.body);opts.headers={'Content-Type':'application/json',...(opts.headers||{})};}
+  const r=await fetch(url,{cache:'no-store',...opts});
+  let p={};try{p=await r.json();}catch(_){}
+  if(!r.ok||p.success===false) throw new Error(p.error||`Request failed (${r.status})`);
+  return p.data!==undefined?p.data:p;
+}
+const CAMERA_LABELS={cam_a:'Camera A',cam_b:'Camera B'};
+function camLabel(id){return CAMERA_LABELS[id]||id||'';}
+async function cameraIds(){
+  try{const d=await api('/api/cameras/health');const ids=Object.keys(d||{});if(ids.length)return ids;}catch(_){}
+  return Object.keys(CAMERA_LABELS);
+}
+async function fillCameraSelect(id){
+  const sel=document.getElementById(id); const keep=sel.value;
+  sel.innerHTML=(await cameraIds()).map(c=>`<option value="${escHtml(c)}">${escHtml(camLabel(c))}</option>`).join('');
+  if(keep) sel.value=keep;
+}
+function fmtTime(iso){return iso?new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';}
+function fmtDateTime(iso){return iso?new Date(iso).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'';}
+function fmtDuration(s){s=Math.max(0,Math.round(Number(s)||0));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');}
+function fmtSize(b){b=Number(b)||0;return b>1073741824?(b/1073741824).toFixed(1)+' GB':(b/1048576).toFixed(1)+' MB';}
+function isActiveTab(id){const el=document.getElementById('dash-'+id);return el&&el.classList.contains('active');}
+function closeMediaModal(){const v=document.getElementById('media-video');v.pause();v.removeAttribute('src');v.load();document.getElementById('media-modal').classList.remove('open');}
+function openMedia({title,video,time,image,note}){
+  document.getElementById('media-title').textContent=title||'';
+  const v=document.getElementById('media-video'), img=document.getElementById('media-image'), n=document.getElementById('media-note');
+  n.textContent=note||'';
+  v.hidden=!video; img.hidden=!image||!!video;
+  if(video){
+    v.src=video;
+    v.onloadedmetadata=()=>{ if(time) v.currentTime=Math.max(0,time-2); v.play().catch(()=>{}); };
+    v.onerror=()=>{ v.hidden=true; if(image){img.src=image;img.hidden=false;} n.textContent='This video format cannot play in the browser. Showing the saved frame instead.'+(note?' '+note:''); };
+  }
+  if(image&&!video) img.src=image;
+  document.getElementById('media-modal').classList.add('open');
+}
+
+// ==== Attendance ====
+const DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const STATUS_TEXT={present:'Present',late:'Late',absent:'Absent',excused:'Excused',not_seen_yet:'Not seen yet',upcoming:'Upcoming'};
+let attClasses=[], attStudents=[], editingClassId=null, attRefreshTimer=null;
+function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+async function loadAttendanceTab(){
+  const dateInput=document.getElementById('att-date'); if(!dateInput.value) dateInput.value=todayLocal();
+  try{ attClasses=await api('/api/attendance/classes'); }catch(e){ document.getElementById('att-today').innerHTML=`<div class="placeholder">${escHtml(e.message)}</div>`; return; }
+  const sel=document.getElementById('att-class'), keep=sel.value;
+  sel.innerHTML=attClasses.length?attClasses.map(c=>`<option value="${escHtml(c._id)}">${escHtml(c.name)}</option>`).join(''):'<option value="">No classes yet</option>';
+  if(keep&&attClasses.some(c=>c._id===keep)) sel.value=keep;
+  await loadAttendanceToday();
+  if(attClasses.length) loadAttendanceReport();
+  clearInterval(attRefreshTimer);
+  attRefreshTimer=setInterval(()=>{ if(isActiveTab('attendance')){ loadAttendanceToday(); if(document.getElementById('att-date').value===todayLocal()) loadAttendanceReport(true); } else clearInterval(attRefreshTimer); },20000);
+}
+async function loadAttendanceToday(){
+  const root=document.getElementById('att-today');
+  try{
+    const res=await fetch('/api/attendance/today',{cache:'no-store'}).then(r=>r.json());
+    if(!res.success) throw new Error(res.error);
+    document.getElementById('att-today-date').textContent=new Date().toLocaleDateString([], {weekday:'long',day:'numeric',month:'long'});
+    if(!res.data.length){root.innerHTML=`<div class="placeholder">${attClasses.length?'No classes meet today.':'No classes yet. Use “+ New class”.'}</div>`;return;}
+    root.innerHTML=res.data.map(r=>{
+      const s=r.summary, state={upcoming:'Upcoming',in_progress:'In progress',finished:'Finished'}[r.state];
+      return `<div class="x-card clickable" onclick="showClassReport('${escHtml(r.class_id)}','${escHtml(r.date)}')">
+        <h3>${escHtml(r.class_name)}</h3>
+        <div class="x-meta">${escHtml(fmtTime(r.window.start))}–${escHtml(fmtTime(r.window.end))} · ${escHtml(camLabel(r.camera_id))} · <span class="x-badge ${r.state==='in_progress'?'ok':''}">${state}</span></div>
+        <div class="x-counts"><span class="x-badge present">${s.present} present</span><span class="x-badge late">${s.late} late</span>${r.state==='finished'?`<span class="x-badge absent">${s.absent} absent</span>`:`<span class="x-badge">${s.not_seen_yet+ (r.state==='upcoming'?s.total-s.present-s.late-s.excused:0)} not seen yet</span>`}${s.excused?`<span class="x-badge excused">${s.excused} excused</span>`:''}</div>
+      </div>`;}).join('');
+  }catch(e){root.innerHTML=`<div class="placeholder">${escHtml(e.message||'Could not load today’s classes.')}</div>`;}
+}
+function showClassReport(id,date){document.getElementById('att-class').value=id;document.getElementById('att-date').value=date;loadAttendanceReport();}
+async function loadAttendanceReport(quiet){
+  const id=document.getElementById('att-class').value, date=document.getElementById('att-date').value||todayLocal();
+  const root=document.getElementById('att-report'), status=document.getElementById('att-status');
+  if(!id){root.innerHTML='<div class="placeholder">Create a class first.</div>';return;}
+  if(!quiet) status.textContent='Loading…';
+  try{
+    const r=await api(`/api/attendance/classes/${encodeURIComponent(id)}/report?date=${encodeURIComponent(date)}`);
+    const s=r.summary;
+    status.textContent=`${r.class_name} · ${new Date(r.window.start).toLocaleDateString([], {weekday:'long',day:'numeric',month:'long'})} · ${fmtTime(r.window.start)}–${fmtTime(r.window.end)} on ${camLabel(r.camera_id)}`
+      +(r.meets_today?'':' · (this class does not normally meet on this day)')
+      +` · ${s.present} present, ${s.late} late, ${s.absent} absent${s.excused?`, ${s.excused} excused`:''}${s.not_seen_yet?`, ${s.not_seen_yet} not seen yet`:''}`;
+    if(!r.rows.length){root.innerHTML='<div class="placeholder">This class has no students. Use “Edit class” to add them.</div>';return;}
+    root.innerHTML=`<div class="x-table-wrap"><table class="x-table"><thead><tr><th>Student</th><th>Status</th><th>First seen</th><th>Late by</th><th>Correction</th></tr></thead><tbody>${
+      r.rows.map(row=>`<tr><td><strong>${escHtml(row.name)}</strong><div class="x-meta">${escHtml(row.student_id)}</div></td>
+        <td><span class="x-badge ${escHtml(row.status)}">${escHtml(STATUS_TEXT[row.status]||row.status)}</span>${row.corrected?` <span class="x-meta" title="${escHtml(row.note)}">(corrected; camera: ${escHtml(STATUS_TEXT[row.automatic_status]||row.automatic_status)})</span>`:''}</td>
+        <td>${escHtml(fmtTime(row.first_seen))||'—'}</td><td>${row.minutes_late?escHtml(row.minutes_late+' min'):'—'}</td>
+        <td><select aria-label="Correct attendance for ${escHtml(row.name)}" onchange="markAttendance('${escHtml(row.student_id)}',this.value)">
+          ${['auto','present','late','absent','excused'].map(v=>`<option value="${v}" ${(row.corrected?row.status:'auto')===v?'selected':''}>${v==='auto'?'Automatic':STATUS_TEXT[v]}</option>`).join('')}
+        </select></td></tr>`).join('')}</tbody></table></div>
+      ${r.not_on_list.length?`<p class="x-note" style="margin-top:10px">Also recognised on this camera during the class (not on the class list): ${r.not_on_list.map(escHtml).join(', ')}</p>`:''}`;
+  }catch(e){status.textContent=e.message;}
+}
+async function markAttendance(studentId,value){
+  const id=document.getElementById('att-class').value, date=document.getElementById('att-date').value||todayLocal();
+  let note='';
+  if(value==='excused'){note=prompt('Reason (optional):','')||'';}
+  try{await api(`/api/attendance/classes/${encodeURIComponent(id)}/marks`,{method:'PUT',body:{date,student_id:studentId,status:value,note}});loadAttendanceReport(true);loadAttendanceToday();}
+  catch(e){document.getElementById('att-status').textContent=e.message;}
+}
+function exportAttendance(){
+  const id=document.getElementById('att-class').value; if(!id) return;
+  const date=document.getElementById('att-date').value||todayLocal();
+  window.location.href=`/api/attendance/classes/${encodeURIComponent(id)}/report?date=${encodeURIComponent(date)}&format=csv`;
+}
+function editSelectedClass(){const id=document.getElementById('att-class').value;if(id)openClassModal(id);}
+async function openClassModal(id){
+  editingClassId=id||null;
+  const cls=attClasses.find(c=>c._id===id)||{days:[1,2,3,4,5],start_time:'09:00',end_time:'10:30',late_after_minutes:10,early_minutes:15,student_ids:[]};
+  document.getElementById('class-modal-title').textContent=id?'Edit class':'New class';
+  document.getElementById('cls-delete').hidden=!id;
+  document.getElementById('cls-error').textContent='';
+  await fillCameraSelect('cls-camera');
+  document.getElementById('cls-name').value=cls.name||'';
+  if(cls.camera_id) document.getElementById('cls-camera').value=cls.camera_id;
+  document.getElementById('cls-start').value=cls.start_time;
+  document.getElementById('cls-end').value=cls.end_time;
+  document.getElementById('cls-late').value=cls.late_after_minutes;
+  document.getElementById('cls-early').value=cls.early_minutes;
+  document.getElementById('cls-days').innerHTML=[1,2,3,4,5,6,0].map(d=>`<label><input type="checkbox" value="${d}" ${cls.days.includes(d)?'checked':''}> ${DAY_NAMES[d]}</label>`).join('');
+  try{attStudents=await api('/api/students');}catch(_){attStudents=[];}
+  const chosen=new Set(cls.student_ids);
+  document.getElementById('cls-filter').value='';
+  document.getElementById('cls-students').innerHTML=attStudents.length?attStudents.map(s=>`<label data-q="${escHtml((s.name+' '+s.student_id).toLowerCase())}"><input type="checkbox" value="${escHtml(s.student_id)}" ${chosen.has(s.student_id)?'checked':''} onchange="countClassStudents()"> ${escHtml(s.name)} <span class="x-meta">${escHtml(s.student_id)}</span></label>`).join(''):'<div class="placeholder">No students yet. Add them on the Students tab.</div>';
+  countClassStudents();
+  document.getElementById('class-modal').classList.add('open');
+}
+function closeClassModal(){document.getElementById('class-modal').classList.remove('open');}
+function filterClassStudents(){const q=document.getElementById('cls-filter').value.toLowerCase();document.querySelectorAll('#cls-students label').forEach(l=>{l.hidden=!l.dataset.q.includes(q);});}
+function countClassStudents(){document.getElementById('cls-count').textContent=`(${document.querySelectorAll('#cls-students input:checked').length} selected)`;}
+async function saveClass(){
+  const body={
+    name:document.getElementById('cls-name').value, camera_id:document.getElementById('cls-camera').value,
+    days:[...document.querySelectorAll('#cls-days input:checked')].map(i=>Number(i.value)),
+    start_time:document.getElementById('cls-start').value, end_time:document.getElementById('cls-end').value,
+    late_after_minutes:Number(document.getElementById('cls-late').value), early_minutes:Number(document.getElementById('cls-early').value),
+    student_ids:[...document.querySelectorAll('#cls-students input:checked')].map(i=>i.value),
+  };
+  if(!body.days.length){document.getElementById('cls-error').textContent='Choose at least one day.';return;}
+  try{
+    const saved=await api(editingClassId?`/api/attendance/classes/${encodeURIComponent(editingClassId)}`:'/api/attendance/classes',{method:editingClassId?'PUT':'POST',body});
+    closeClassModal(); await loadAttendanceTab(); document.getElementById('att-class').value=saved._id; loadAttendanceReport();
+  }catch(e){document.getElementById('cls-error').textContent=e.message;}
+}
+async function deleteClass(){
+  if(!editingClassId||!confirm('Delete this class and its attendance corrections? Camera sightings are kept.')) return;
+  try{await api(`/api/attendance/classes/${encodeURIComponent(editingClassId)}`,{method:'DELETE'});closeClassModal();document.getElementById('att-class').value='';loadAttendanceTab();}
+  catch(e){document.getElementById('cls-error').textContent=e.message;}
+}
+
+// ==== Recordings and appearance search ====
+let recTimer=null, searchPhoto=null;
+const COLOURS=['black','white','gray','red','orange','yellow','green','blue','purple','pink','brown'];
+async function loadRecordingsTab(){
+  for(const id of ['srch-upper','srch-lower']){const s=document.getElementById(id);if(!s.options.length)s.innerHTML='<option value="">Any</option>'+COLOURS.map(c=>`<option value="${c}">${c[0].toUpperCase()+c.slice(1)}</option>`).join('');}
+  await Promise.all([loadRecordingControls(),loadVideoList()]);
+  clearInterval(recTimer);
+  recTimer=setInterval(()=>{ if(isActiveTab('recordings')) loadRecordingControls(true); else clearInterval(recTimer); },3000);
+}
+async function loadRecordingControls(quiet){
+  const root=document.getElementById('rec-cameras');
+  let status={cameras:{},last_errors:{}};
+  let engineDown=false;
+  try{status=await api('/api/recordings/status');}catch(_){engineDown=true;}
+  const cams=await cameraIds();
+  const focused=document.activeElement&&document.activeElement.id&&document.activeElement.id.startsWith('rec-label-');
+  if(quiet&&focused) return;
+  const labels={}; cams.forEach(c=>{const el=document.getElementById('rec-label-'+c);if(el)labels[c]=el.value;});
+  root.innerHTML=engineDown?'<div class="placeholder">The camera engine is not running. Start main.py to record.</div>':cams.map(c=>{
+    const r=status.cameras[c], err=status.last_errors&&status.last_errors[c];
+    return `<div class="x-card"><h3>${escHtml(camLabel(c))}</h3>
+      ${r&&r.recording?`<div class="x-meta"><span class="rec-dot"></span>Recording ${escHtml(fmtDuration(r.elapsed_seconds))}${r.label?' · '+escHtml(r.label):''}${r.dropped_frames?` · ${r.dropped_frames} frames skipped`:''}</div>
+        <div class="x-actions" style="justify-content:flex-start;margin-top:10px"><button class="x-btn danger" onclick="recordingAction('${escHtml(c)}','stop')">&#9632; Stop recording</button></div>`
+      :`<div class="x-meta">Not recording${err?` · last error: ${escHtml(err)}`:''}</div>
+        <div class="x-toolbar" style="margin:10px 0 0"><label class="x-grow">Label (optional)<input id="rec-label-${escHtml(c)}" maxlength="80" placeholder="e.g. Main gate, Friday" value="${escHtml(labels[c]||'')}"></label>
+        <button class="add-btn" onclick="recordingAction('${escHtml(c)}','start')">&#9679; Record</button></div>`}
+    </div>`;}).join('');
+}
+async function recordingAction(cam,action){
+  const label=(document.getElementById('rec-label-'+cam)||{}).value||'';
+  try{await api(`/api/recordings/${encodeURIComponent(cam)}/${action}`,{method:'POST',body:{label}});}
+  catch(e){alert(e.message);}
+  loadRecordingControls(); if(action==='stop') setTimeout(loadVideoList,800);
+}
+let videoSources=[];
+async function loadVideoList(){
+  const root=document.getElementById('rec-list');
+  const picked=new Set([...document.querySelectorAll('.rec-pick:checked')].map(c=>c.value));
+  try{videoSources=await api('/api/search/sources');}catch(e){root.innerHTML=`<div class="placeholder">${escHtml(e.message)}</div>`;return;}
+  document.getElementById('rec-count').textContent=videoSources.length?`${videoSources.length} video${videoSources.length===1?'':'s'}`:'';
+  if(!videoSources.length){root.innerHTML='<div class="placeholder">No recordings or uploads yet.</div>';return;}
+  root.innerHTML=videoSources.map(s=>{
+    const ix=s.index||{}; const busy=ix.state==='queued'||ix.state==='running';
+    const state=ix.state==='indexed'?`<span class="x-badge ok">Ready to search · ${ix.people??'?'} people</span>`
+      :busy?`<span class="x-badge warn">${ix.state==='queued'?'Waiting':'Preparing'} ${Math.round((ix.progress||0)*100)}%</span><div class="x-mini-bar"><div style="width:${Math.round((ix.progress||0)*100)}%"></div></div>`
+      :ix.state==='error'?`<span class="x-badge bad" title="${escHtml(ix.error||'')}">Failed: ${escHtml((ix.error||'').slice(0,80))}</span>`
+      :'<span class="x-badge">Not prepared for search</span>';
+    const when=s.kind==='recording'?`${camLabel(s.camera_id)} · ${fmtDateTime(s.started_at)} · ${fmtDuration(s.duration_seconds)}${s.status==='recording'?' · <span class="rec-dot"></span>still recording':s.status&&s.status!=='complete'?` · ${escHtml(s.status)}`:''}`
+      :`Uploaded ${fmtDateTime(s.uploaded_at)}`;
+    return `<div class="x-row" id="src-${escHtml(s.id)}"><input type="checkbox" class="rec-pick" value="${escHtml(s.id)}" aria-label="Select ${escHtml(s.name)}" ${picked.has(s.id)||(!picked.size&&ix.state==='indexed')?'checked':''}>
+      <div><strong>${escHtml(s.name)}</strong> <span class="x-meta">${s.kind==='upload'?'(uploaded)':''}</span><div class="x-meta">${when} · ${escHtml(fmtSize(s.size_bytes))}</div><div style="margin-top:5px">${state}</div></div>
+      <div class="x-actions">
+        <button class="x-btn" onclick="playSource('${escHtml(s.id)}')">&#9654; Play</button>
+        ${ix.state==='indexed'?`<button class="x-btn" onclick="indexVideos(['${escHtml(s.id)}'],true)" title="Prepare again">Re-prepare</button>`:busy||s.status==='recording'?'':`<button class="x-btn" onclick="indexVideos(['${escHtml(s.id)}'])">Prepare for search</button>`}
+        <button class="x-btn danger" ${s.status==='recording'?'disabled':''} onclick="deleteSource('${escHtml(s.id)}')">Delete</button>
+      </div></div>`;}).join('');
+}
+function playSource(id){const s=videoSources.find(v=>v.id===id);if(s)openMedia({title:s.name,video:s.url});}
+async function deleteSource(id){
+  const s=videoSources.find(v=>v.id===id);
+  if(!s||!confirm(`Delete "${s.name}" and its search data? This cannot be undone.`)) return;
+  try{await api(`/api/search/sources/${encodeURIComponent(id)}`,{method:'DELETE'});loadVideoList();}catch(e){alert(e.message);}
+}
+async function indexVideos(ids,force){
+  const st=document.getElementById('srch-status');
+  st.textContent='Starting the search engine (about 15 seconds the first time)…';
+  try{const r=await api('/api/search/index',{method:'POST',body:{source_ids:ids,force:!!force}});st.textContent=r.queued.length?`Preparing ${r.queued.length} video(s) for search…`:'Those videos are already prepared.';}
+  catch(e){st.textContent=e.message;}
+  loadVideoList();
+}
+function indexSelectedVideos(){
+  const ids=[...document.querySelectorAll('.rec-pick:checked')].map(c=>c.value);
+  if(!ids.length){document.getElementById('srch-status').textContent='Tick one or more videos first.';return;}
+  indexVideos(ids);
+}
+function uploadVideo(file){
+  if(!file) return;
+  const bar=document.getElementById('rec-upload-progress'); bar.hidden=false;
+  const fill=bar.querySelector('div'), label=bar.querySelector('span');
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/uploads');
+  xhr.setRequestHeader('Content-Type','application/octet-stream');
+  xhr.setRequestHeader('X-File-Name',encodeURIComponent(file.name));
+  xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);fill.style.width=p+'%';label.textContent=`Uploading ${file.name}: ${p}%`;}};
+  xhr.onload=()=>{
+    let res={};try{res=JSON.parse(xhr.responseText);}catch(_){}
+    if(xhr.status>=200&&xhr.status<300){label.textContent='Uploaded. Preparing it for search…';loadVideoList().then(()=>indexVideos([res.data.id]));setTimeout(()=>{bar.hidden=true;},2500);}
+    else{label.textContent=res.error||'Upload failed.';fill.style.width='0';}
+  };
+  xhr.onerror=()=>{label.textContent='Upload failed. Is the dashboard server running?';};
+  xhr.send(file);
+}
+function pickSearchPhoto(file){
+  const name=document.getElementById('srch-photo-name');
+  if(!file){searchPhoto=null;name.textContent='Photo';return;}
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const scale=Math.min(1,1280/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    searchPhoto=c.toDataURL('image/jpeg',0.9);URL.revokeObjectURL(url);
+    name.innerHTML=`${escHtml(file.name.slice(0,18))} <span title="Remove photo" onclick="event.preventDefault();event.stopPropagation();document.getElementById('srch-photo').value='';pickSearchPhoto(null)">&#10005;</span>`;
+  };
+  img.onerror=()=>{name.textContent='Photo';searchPhoto=null;alert('That image could not be read.');};
+  img.src=url;
+}
+async function runAppearanceSearch(){
+  const st=document.getElementById('srch-status'), root=document.getElementById('srch-results');
+  const ids=[...document.querySelectorAll('.rec-pick:checked')].map(c=>c.value);
+  const notReady=ids.filter(id=>(videoSources.find(s=>s.id===id)||{}).index?.state!=='indexed');
+  if(!ids.length){st.textContent='Tick the videos to search.';return;}
+  st.textContent='Searching…';root.innerHTML='';
+  try{
+    const r=await api('/api/search/query',{method:'POST',body:{source_ids:ids,text:document.getElementById('srch-text').value,photo:searchPhoto,upper:document.getElementById('srch-upper').value,lower:document.getElementById('srch-lower').value}});
+    st.textContent=`${r.matches.length} match${r.matches.length===1?'':'es'} in ${r.searched} video${r.searched===1?'':'s'}`
+      +(notReady.length?` (${notReady.length} ticked video(s) not prepared yet were skipped)`:'')
+      +(searchPhoto?(r.face_in_photo?' · face found in your photo':' · no face found in your photo, matching by look only'):'');
+    if(!r.matches.length){root.innerHTML='<div class="placeholder">No matching people.</div>';return;}
+    window._searchMatches=r.matches;
+    root.innerHTML=r.matches.map((m,i)=>`<div class="x-result" onclick="openMatch(${i})" title="Open the video at this moment">
+      <img src="${escHtml(m.thumb_url)}" alt="Person ${m.number}" loading="lazy">
+      <div><strong>${escHtml(m.source_name)}</strong><br>${m.wall_time?escHtml(fmtDateTime(m.wall_time)):'at '+escHtml(fmtDuration(m.best_time))}${m.camera_id?' · '+escHtml(camLabel(m.camera_id)):''}<br>
+      Clothes: ${escHtml(m.upper_colour||'?')} / ${escHtml(m.lower_colour||'?')}${m.has_face?' · face seen':''}
+      ${m.reasons&&m.reasons.length?`<br><span style="color:${/closest look only/.test(m.reasons.join())?'var(--text-muted)':'var(--green)'}">${escHtml(m.reasons.join(', '))}</span>`:''}</div></div>`).join('');
+  }catch(e){st.textContent=e.message;}
+}
+function openMatch(i){
+  const m=window._searchMatches[i]; if(!m) return;
+  openMedia({title:`${m.source_name} — ${m.wall_time?fmtDateTime(m.wall_time):fmtDuration(m.best_time)}`,video:m.video_url,time:m.best_time,image:m.scene_url,
+    note:`This person is visible from ${fmtDuration(m.start)} to ${fmtDuration(m.end)} in this video.`});
+}
+
+// ==== Exam mode ====
+let examTimer=null;
+const EXAM_TEXT={exam_phone:'Phone',exam_looking_around:'Looking around',exam_left_seat:'Left seat',exam_too_close:'Too close'};
+function examCounts(counts){return Object.keys(EXAM_TEXT).map(k=>`<span class="x-badge ${counts&&counts[k]?'bad':''}">${EXAM_TEXT[k]}: ${(counts&&counts[k])||0}</span>`).join('');}
+function examEvents(report){
+  const events=(report.events||[]).slice().reverse();
+  if(!events.length) return '<div class="placeholder">No cues so far.</div>';
+  return `<div class="x-events">${events.map(ev=>`<div class="x-event" onclick="openMedia({title:'${escHtml((ev.title+(ev.who?' — '+ev.who:'')).replace(/'/g,''))}',image:'/media/exams/${escHtml(ev.snapshot||'')}',note:'${escHtml((ev.detail||'').replace(/'/g,''))}'})">
+    ${ev.snapshot?`<img src="/media/exams/${escHtml(ev.snapshot)}" alt="" loading="lazy">`:''}
+    <div><strong>${escHtml(ev.title)}</strong> · ${escHtml(fmtTime(ev.timestamp))}<br>${escHtml(ev.who||'')}${ev.who?'<br>':''}${escHtml(ev.detail||'')}${ev.returned_at?`<br>Returned ${escHtml(fmtTime(ev.returned_at))}`:''}</div></div>`).join('')}</div>`;
+}
+async function loadExamTab(){
+  await fillCameraSelect('exam-camera');
+  await refreshExamActive();
+  loadExamReports();
+  clearInterval(examTimer);
+  examTimer=setInterval(()=>{ if(isActiveTab('exam')) refreshExamActive(); else clearInterval(examTimer); },4000);
+}
+async function refreshExamActive(){
+  const root=document.getElementById('exam-active'), st=document.getElementById('exam-status');
+  let status;
+  try{status=await api('/api/exams/status');}catch(e){root.innerHTML='';st.textContent='The camera engine is not running. Start main.py to use exam mode.';return;}
+  st.textContent=status.state==='load_error'?`Exam models could not load: ${status.error}`:status.state==='loading'?'Loading exam models (first start downloads about 6 MB)…':status.error?`Last error: ${status.error}`:'';
+  const active=Object.values(status.active||{});
+  root.innerHTML=active.map(s=>`<section class="panel x-section"><div class="panel-hdr"><span class="rec-dot"></span>${escHtml(s.name)} · ${escHtml(camLabel(s.camera_id))}<span class="muted-count">started ${escHtml(fmtTime(s.started_at))}</span></div>
+    <div class="x-pad"><div class="x-meta">${s.learning_seats?'Learning seat positions…':`${s.seats} seats learned`} · up to ${s.max_people} people seen</div>
+    <div class="x-counts">${examCounts(s.counts)}</div>
+    <div class="x-actions" style="justify-content:flex-start;margin-top:10px"><button class="x-btn" onclick="examAction('${escHtml(s.camera_id)}','relearn')">Re-learn seats</button><button class="x-btn danger" onclick="examAction('${escHtml(s.camera_id)}','stop')">&#9632; End exam</button></div>
+    ${examEvents(s)}</div></section>`).join('');
+}
+async function startExam(){
+  const st=document.getElementById('exam-status');
+  try{await api(`/api/exams/${encodeURIComponent(document.getElementById('exam-camera').value)}/start`,{method:'POST',body:{name:document.getElementById('exam-name').value}});st.textContent='Exam started.';refreshExamActive();}
+  catch(e){st.textContent=e.message;}
+}
+async function examAction(cam,action){
+  if(action==='stop'&&!confirm('End this exam session? The report will be saved.')) return;
+  try{const r=await api(`/api/exams/${encodeURIComponent(cam)}/${action}`,{method:'POST'});if(action==='stop'){refreshExamActive();loadExamReports();showExamReport(r.id);}else refreshExamActive();}
+  catch(e){document.getElementById('exam-status').textContent=e.message;}
+}
+async function loadExamReports(){
+  const root=document.getElementById('exam-reports');
+  try{
+    const list=(await api('/api/exams/reports')).filter(r=>!r.active);
+    root.innerHTML=list.length?list.map(r=>`<div class="x-row" style="grid-template-columns:minmax(0,1fr) auto"><div><strong>${escHtml(r.name)}</strong><div class="x-meta">${escHtml(camLabel(r.camera_id))} · ${escHtml(fmtDateTime(r.started_at))}–${escHtml(fmtTime(r.ended_at))}</div><div class="x-counts">${examCounts(r.counts)}</div></div>
+      <div class="x-actions"><button class="x-btn" onclick="showExamReport('${escHtml(r.id)}')">Open report</button></div></div><div id="exam-report-${escHtml(r.id)}"></div>`).join(''):'<div class="placeholder">No finished exams yet.</div>';
+  }catch(e){root.innerHTML=`<div class="placeholder">${escHtml(e.message)}</div>`;}
+}
+async function showExamReport(id){
+  const slot=document.getElementById('exam-report-'+id);
+  if(!slot) return;
+  if(slot.innerHTML){slot.innerHTML='';return;}
+  try{const r=await api(`/api/exams/reports/${encodeURIComponent(id)}`);
+    slot.innerHTML=`<div class="x-card" style="margin-bottom:6px"><div class="x-meta">${r.frames_analysed} frames analysed · ${r.seats} seats · up to ${r.max_people} people. Cues are prompts to review, not proof of cheating.</div>${examEvents(r)}
+      <div class="x-actions" style="justify-content:flex-start;margin-top:10px"><button class="x-btn" onclick="window.print()">Print</button></div></div>`;}
+  catch(e){slot.innerHTML=`<div class="placeholder">${escHtml(e.message)}</div>`;}
+}
+
 let socketInited=false;
 function initSocket(){
   if(socketInited) return; socketInited=true;
+  document.addEventListener('pointerdown',unlockAlertAudio);
+  renderSoundToggle();
   const socket=io({transports:['websocket'],reconnection:true,reconnectionDelay:500});
   socket.on('connect',()=>{ document.getElementById('conn-badge').textContent='Connected'; document.getElementById('conn-badge').className='conn-badge connected'; loadRecent(); loadStats(); });
   socket.on('disconnect',()=>{ document.getElementById('conn-badge').textContent='Disconnected'; document.getElementById('conn-badge').className='conn-badge disconnected'; });
   socket.on('new_detection',d=>{ const added=addLog(d,true); if(added&&!d.is_known){ const gid=d.global_person_id||d.person_id||d.student_id||d.tracker_id; addAlert('danger','Unknown person detected',`${d.student_name||d.person_name||'Unknown'} on ${d.camera_id} — ID: ${gid||'—'}`,`${gid||''}:${d.camera_id||''}:${d.event_type||''}`); } });
   socket.on('cross_camera',d=>{ cross++; flash('card-cross'); updateStats(); addAlert('info','Cross-camera match',`${d.global_id} tracked on ${(d.cameras||[]).join(' → ')}`); });
+  socket.on('behavior_alert',handleBehaviorAlert);
+  let sightingRefresh=null;
+  socket.on('sightings',()=>{ if(!isActiveTab('attendance')) return; clearTimeout(sightingRefresh); sightingRefresh=setTimeout(()=>{ loadAttendanceToday(); if(document.getElementById('att-date').value===todayLocal()) loadAttendanceReport(true); },1500); });
+  let indexRefresh=null;
+  socket.on('search_index',()=>{ if(!isActiveTab('recordings')) return; clearTimeout(indexRefresh); indexRefresh=setTimeout(loadVideoList,700); });
+  socket.on('recordings_changed',()=>{ if(isActiveTab('recordings')){ loadRecordingControls(); setTimeout(loadVideoList,800); } });
+  socket.on('exam_changed',()=>{ if(isActiveTab('exam')){ refreshExamActive(); loadExamReports(); } });
   socket.on('visitor_registered',()=>{ if(document.getElementById('dash-visitors').classList.contains('active')) loadVisitors(); });
   socket.on('visitor_checked_out',()=>{ if(document.getElementById('dash-visitors').classList.contains('active')) loadVisitors(); });
   socket.on('reset',()=>{ clearLog(); document.getElementById('alert-body').innerHTML='<div class="placeholder">No alerts yet.</div>'; alertedIds.clear(); alertCount=0; cross=0; total=0; known=0; unknown=0; updateStats(); });

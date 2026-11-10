@@ -38,4 +38,7 @@ function requestEngine(method, endpoint, payload) {
 
 exports.enrollIdentity = (payload) => requestEngine('POST', '/enroll', payload);
 exports.rebuildEmbeddings = () => requestEngine('POST', '/rebuild-embeddings', {});
-exports.removeIdentity = (identityId) => requestEngine('DELETE', `/identity/${encodeURIComponent(identityId)}`);
+// reason: "checked out" or "expired"; a removed visitor goes on the watch list.
+exports.removeIdentity = (identityId, reason) => requestEngine('DELETE',
+  `/identity/${encodeURIComponent(identityId)}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`);
+exports.request = requestEngine;

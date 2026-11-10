@@ -38,6 +38,8 @@ from python_engine.engine_api import (
     violence_classifier,
     weapon_detector,
     zone_store,
+    exam_monitor,
+    recorder,
 )
 
 
@@ -166,7 +168,8 @@ def camera_worker(cam_id, source, result_queue, context):
         annotator,
         recognizer,
         publish_preview,
-        (violence_classifier, weapon_detector),
+        # Recorder last, so the REC marker is drawn on top. Both receive raw frames.
+        (violence_classifier, weapon_detector, exam_monitor, recorder),
         zone_store,
     )
     preview.thread.start()
@@ -1631,6 +1634,8 @@ def camera_worker(cam_id, source, result_queue, context):
                     # Persistent identity
                     "global_id": global_id,
                     "cameras": reid_cameras,
+                    # Read-only, for the expired-visitor watch list.
+                    "face_embedding": face_embedding,
                 }
 
                 # =============================================

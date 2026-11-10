@@ -267,3 +267,40 @@ COLOR_UNKNOWN = (
 FONT_SCALE = 0.6
 
 FONT_THICKNESS = 2
+
+# ============================================================
+# ADD-ON FEATURES (recording, sightings, visitor watch list, exam mode)
+# None of these change face recognition, Re-ID or tracking.
+# ============================================================
+# Recording starts and stops from the dashboard (Recordings tab).
+RECORDINGS_DIR = os.path.join(DATA_DIR, "recordings")
+RECORDING_FPS = 15                  # frames written per second
+RECORDING_MAX_WIDTH = 1280          # larger frames are scaled down before encoding
+RECORDING_SEGMENT_MINUTES = 10      # long recordings are split; a crash only loses the open file
+RECORDING_ENCODER = "auto"          # "auto" (CPU libx264, GPU h264_nvenc if that fails), or one of them
+
+# Sightings: who was seen on which camera and when (used by attendance).
+# A person is logged again on the same camera at most once per interval.
+SIGHTING_INTERVAL_SECONDS = 30
+
+# Expired / checked-out visitor watch list.
+VISITOR_WATCHLIST_DIR = os.path.join(DATA_DIR, "visitor_watchlist")
+VISITOR_WATCHLIST_THRESHOLD = 0.50  # ArcFace cosine similarity needed for a match
+VISITOR_WATCHLIST_CONFIRM = 2       # matches within 10 s before an alert
+VISITOR_WATCHLIST_KEEP_DAYS = 7     # face data is deleted after this many days
+VISITOR_WATCHLIST_COOLDOWN = 120.0  # seconds between alerts for the same visitor
+
+# Exam mode (cheating cues). Runs only while an exam session is active.
+EXAM_DIR = os.path.join(DATA_DIR, "exams")
+EXAM_POSE_MODEL = "yolo11n-pose.pt"   # downloaded by ultralytics on first use
+EXAM_OBJECT_MODEL = "yolov8s.pt"      # COCO model, used only for its "cell phone" class
+EXAM_SAMPLE_INTERVAL = 0.35           # seconds between analysed frames per camera
+EXAM_PHONE_CONFIDENCE = 0.40
+EXAM_PHONE_CONFIRM = 2                # consecutive analysed frames with a phone
+EXAM_LOOK_YAW_RATIO = 0.55            # how far the nose is off-centre between the eyes
+EXAM_LOOK_SECONDS = 3.0               # sideways/backwards this long before a cue
+EXAM_SEAT_LEARN_SECONDS = 15.0        # seats are learned from where people sit at the start
+EXAM_SEAT_EMPTY_SECONDS = 45.0        # a learned seat empty this long gives a cue
+EXAM_CLOSE_SECONDS = 4.0              # two students this close for this long gives a cue
+EXAM_CLOSE_RATIO = 0.60               # head distance / average shoulder width
+EXAM_ALERT_COOLDOWN = 30.0            # seconds between repeated cues for the same student/seat

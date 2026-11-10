@@ -45,3 +45,12 @@ data/deleted_enrollments/
 data/setup_cache/
 data/logs/
 face_evaluation.json
+
+# Add-on data: recordings, uploads, search indexes, exam reports, visitor watch list
+data/embeddings_adaface/
+data/recordings/
+data/uploads/
+data/search_index/
+data/exams/
+data/visitor_watchlist/
+data/models/clip/

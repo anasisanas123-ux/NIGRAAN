@@ -54,6 +54,9 @@ def main():
         print(f"{started} camera workers started. Press Q in a camera window to quit.")
         run_display(results)
     finally:
+        # Close open recordings first, so their MP4 files are playable.
+        from python_engine.engine_api import recorder
+        recorder.stop_all()
         context.stop()
 
 

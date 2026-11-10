@@ -56,6 +56,37 @@ app.get('/video_feed/:cam_id', (req, res) => {
   res.on('close', () => proxyReq.destroy());
 });
 
+// attendance, recordings, appearance search, exam mode
+const attendanceRoutes = require('./routes/attendance');
+const mediaRoutes = require('./routes/media');
+const { createSearchManager } = require('./services/searchManager');
+const { createSightingSync } = require('./services/sightingSync');
+const searchManager = createSearchManager({ io });
+const sightingSync = createSightingSync({ Sighting: require('./models/Sighting'), io });
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api', mediaRoutes(searchManager));
+app.get('/media/:kind/{*rest}', mediaRoutes.mediaHandler);
+for (const signal of ['exit', 'SIGINT', 'SIGTERM']) {
+  process.on(signal, () => { searchManager.stopService(); if (signal !== 'exit') process.exit(0); });
+}
+
+// alert notifications: sound in the browser, optional email and SMS
+const { createNotifier } = require('./services/alertNotifier');
+const notifier = createNotifier({ io });
+let lastNotificationTest = 0;
+app.get('/api/notifications/status', (req, res) => {
+  res.json({ success: true, data: notifier.status() });
+});
+app.post('/api/notifications/test', async (req, res) => {
+  const now = Date.now();
+  if (now - lastNotificationTest < 30000) {
+    return res.status(429).json({ success: false, error: 'Wait 30 seconds between test notifications.' });
+  }
+  lastNotificationTest = now;
+  const sent = await notifier.sendTest();
+  res.json({ success: true, data: { sent, status: notifier.status() } });
+});
+
 // cross camera alert endpoint — called by Python
 app.post('/api/cross_camera', (req, res) => {
   const data = req.body;
@@ -90,6 +121,9 @@ mongoose.connect(MONGO_URI)
       const { expireOldVisitors } = require('./controllers/visitorController');
       setInterval(expireOldVisitors, 5 * 60 * 1000); // every 5 minutes
       expireOldVisitors(); // run once immediately on startup
+
+      notifier.start();
+      sightingSync.start();
 
       console.log('API endpoints:');
       console.log(`  GET  http://localhost:${PORT}/api/health`);

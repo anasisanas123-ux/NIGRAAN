@@ -79,6 +79,19 @@ powershell -ExecutionPolicy Bypass -File scripts/restart_project_engines.ps1
 Set `SHOW_DESKTOP_WINDOWS=0` in `.env` to run only the dashboard preview, without
 OpenCV desktop windows. Startup logs from the restart script are in `data/logs/`.
 
+## Add-on features
+
+None of these change face recognition, Re-ID or tracking.
+
+| Feature | Where | Notes |
+|---|---|---|
+| Alert notifications | top bar (Sound on/off), Activity Review (test button) | Sound and pop-ups work out of the box. Email (SMTP) and SMS (Twilio) are optional: fill in the commented settings in `dashboard/.env`. |
+| Attendance | **Attendance** tab | Create a class (camera, days, times, students). Students recognised on that camera are marked present or late; staff can correct entries; CSV export. Uses the engine's sightings log (`/sightings`), stored in MongoDB. |
+| Recording | **Recordings** tab | Start/stop per camera. H.264 MP4 files in `data/recordings/<camera>/`, split every 10 minutes. |
+| Appearance search | **Recordings** tab | Search recordings or uploaded videos by description ("red hoodie", "glasses"), clothing colour, or a photo (face + look). Runs in `search_service.py`, which the dashboard starts on demand on 127.0.0.1:5002. CLIP weights (~600 MB) download into `data/models/clip` on first use. |
+| Exam mode | **Exam** tab | Flags a visible phone, looking around, leaving a seat, and students too close, with snapshots and a saved report in `data/exams/`. The pose model downloads on first use (~6 MB). Thresholds are `EXAM_*` in `config.py`. |
+| Expired visitor alert | automatic | A checked-out or expired visitor seen again raises an alert. Their face data is kept in `data/visitor_watchlist/` for `VISITOR_WATCHLIST_KEEP_DAYS` (7) days, then deleted. |
+
 ## Layout
 
 | Location | Purpose |
@@ -131,7 +144,7 @@ distant-person detection or increase false matches.
 
 ```powershell
 .\venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
-node --test tests/capture-camera.test.cjs tests/student-deletion.test.cjs tests/zone-editor.test.cjs
+node --test tests/capture-camera.test.cjs tests/student-deletion.test.cjs tests/zone-editor.test.cjs tests/alert-notifier.test.cjs tests/attendance.test.cjs
 ```
 
 Use [the CCTV guide](docs/CCTV_RECOGNITION_GUIDE.md) and `evaluate_faces.py` for

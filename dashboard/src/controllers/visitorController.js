@@ -139,7 +139,7 @@ exports.checkoutVisitor = async (req, res) => {
       return res.status(404).json({ success: false, error: "Visitor not found" });
     }
     try {
-      await pythonEngine.removeIdentity(visitor.visitor_id);
+      await pythonEngine.removeIdentity(visitor.visitor_id, 'checked out');
     } catch (error) {
       return res.status(503).json({ success: false, error: `Visitor could not be removed from live recognition yet: ${error.message}` });
     }
@@ -168,7 +168,7 @@ exports.expireOldVisitors = async () => {
     if (result.modifiedCount > 0) {
       console.log(`Expired ${result.modifiedCount} visitor(s)`);
       for (const visitor of expired) {
-        try { await pythonEngine.removeIdentity(visitor.visitor_id); }
+        try { await pythonEngine.removeIdentity(visitor.visitor_id, 'expired'); }
         catch (error) { console.warn(`Could not refresh expired visitor in camera gallery (${visitor.visitor_id}): ${error.message}`); }
       }
     }
